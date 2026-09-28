@@ -41,7 +41,7 @@ providers:
 
   nvidia:
     enabled: true
-    model: meta/llama-3.3-70b-instruct
+    model: nvidia/nemotron-3-super-120b-a12b
     # api_key: (via env NVIDIA_API_KEY ou secrets.env)
 
   openrouter:
