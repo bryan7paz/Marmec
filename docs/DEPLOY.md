@@ -36,7 +36,8 @@ Editar `config/secrets.env`:
 DATABASE_URL=sqlite:///./data/regulatory.db
 
 # LLM (preencha ao menos um)
-GROQ_API_KEY=gsk_sua_chave_aqui
+GOOGLE_API_KEY=sua_chave_aqui
+NVIDIA_API_KEY=nvapi-sua_chave_aqui
 
 # IMODOCS (opcional)
 IMODOCS_USER=seu_login
@@ -124,7 +125,7 @@ nano config/secrets.env
 
 ```env
 DATABASE_URL=postgresql+psycopg2://regulatory:sua_senha@localhost:5432/regulatory
-GROQ_API_KEY=gsk_sua_chave
+GOOGLE_API_KEY=sua_chave
 ```
 
 ### 4. Database

@@ -180,9 +180,16 @@ class TestPipelineEndpoints:
         resp = client.get("/pipeline/settings")
         assert resp.status_code == 200
 
-    def test_settings_update(self, client):
-        resp = client.post("/pipeline/settings", json={"active_provider": "groq"})
+    def test_settings_update(self, client, tmp_path, monkeypatch):
+        # Aponta para um secrets.env temporário para não poluir o real
+        from api.routes import pipeline as pipeline_mod
+
+        fake = tmp_path / "secrets.env"
+        fake.write_text("", encoding="utf-8")
+        monkeypatch.setattr(pipeline_mod, "SECRETS_PATH", fake)
+        resp = client.post("/pipeline/settings", json={"active_provider": "nvidia"})
         assert resp.status_code == 200
+        assert "active_provider=nvidia" in fake.read_text(encoding="utf-8")
 
     def test_notifications_list(self, client):
         resp = client.get("/pipeline/notifications")

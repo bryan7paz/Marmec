@@ -460,30 +460,6 @@
             <p class="text-muted small">Preencha ao menos uma chave para usar o pipeline.</p>
             <form id="settingsForm" onsubmit="saveSettings(event)">
               <div class="mb-3">
-                <label class="form-label small fw-semibold">Groq (gratuito, rápido)</label>
-                <div class="input-group input-group-sm">
-                  <span class="input-group-text"><i class="bi bi-key"></i></span>
-                  <input type="password" class="form-control" id="cfg-GROQ_API_KEY" placeholder="gsk_...">
-                </div>
-                <small class="text-muted">https://console.groq.com</small>
-              </div>
-              <div class="mb-3">
-                <label class="form-label small fw-semibold">NVIDIA NIM (gratuito)</label>
-                <div class="input-group input-group-sm">
-                  <span class="input-group-text"><i class="bi bi-key"></i></span>
-                  <input type="password" class="form-control" id="cfg-NVIDIA_API_KEY" placeholder="nvapi-...">
-                </div>
-                <small class="text-muted">https://build.nvidia.com</small>
-              </div>
-              <div class="mb-3">
-                <label class="form-label small fw-semibold">OpenRouter (modelos gratuitos)</label>
-                <div class="input-group input-group-sm">
-                  <span class="input-group-text"><i class="bi bi-key"></i></span>
-                  <input type="password" class="form-control" id="cfg-OPENROUTER_API_KEY" placeholder="sk-or-...">
-                </div>
-                <small class="text-muted">https://openrouter.ai</small>
-              </div>
-              <div class="mb-3">
                 <label class="form-label small fw-semibold">Google Gemini (gratuito)</label>
                 <div class="input-group input-group-sm">
                   <span class="input-group-text"><i class="bi bi-key"></i></span>
@@ -492,20 +468,12 @@
                 <small class="text-muted">https://aistudio.google.com</small>
               </div>
               <div class="mb-3">
-                <label class="form-label small fw-semibold">Cerebras (gratuito)</label>
+                <label class="form-label small fw-semibold">NVIDIA NIM (gratuito)</label>
                 <div class="input-group input-group-sm">
                   <span class="input-group-text"><i class="bi bi-key"></i></span>
-                  <input type="password" class="form-control" id="cfg-CEREBRAS_API_KEY" placeholder="csk-...">
+                  <input type="password" class="form-control" id="cfg-NVIDIA_API_KEY" placeholder="nvapi-...">
                 </div>
-                <small class="text-muted">https://cloud.cerebras.ai</small>
-              </div>
-              <div class="mb-3">
-                <label class="form-label small fw-semibold">Mistral (gratuito tier)</label>
-                <div class="input-group input-group-sm">
-                  <span class="input-group-text"><i class="bi bi-key"></i></span>
-                  <input type="password" class="form-control" id="cfg-MISTRAL_API_KEY" placeholder="...">
-                </div>
-                <small class="text-muted">https://console.mistral.ai</small>
+                <small class="text-muted">https://build.nvidia.com</small>
               </div>
               <hr>
               <button type="submit" class="btn btn-primary btn-sm">

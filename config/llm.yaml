@@ -1,71 +1,11 @@
-# ══════════════════════════════════════════════════════════════════
-#  Configuração de Provedores LLM
-# ══════════════════════════════════════════════════════════════════
-#
-#  Provedores suportados:
-#    gemini      — Google Gemini (gratuito, 20 req/dia)
-#    groq        — Groq (gratuito, 30 RPM, Llama/Mixtral)
-#    nvidia      — NVIDIA NIM (gratuito com credits)
-#    openrouter  — OpenRouter (modelos gratuitos disponíveis)
-#    cerebras    — Cerebras (gratuito, 1M tokens/dia)
-#    mistral     — Mistral AI (gratuito tier experimental)
-#    openai      — OpenAI (pago)
-#    custom      — Qualquer API compatível com OpenAI
-#
-#  Chaves de API ficam em config/secrets.env ou variáveis de ambiente.
-#
-#  Exemplo de secrets.env:
-#    GROQ_API_KEY=gsk_...
-#    NVIDIA_API_KEY=nvapi-...
-#    OPENROUTER_API_KEY=sk-or-...
-# ══════════════════════════════════════════════════════════════════
-
-# Provedor ativo (será usado primeiro)
-active: gemini
-
-# Cadeia de fallback (ordem de tentativa se o ativo falhar)
+active: nvidia
 fallback_chain:
-  - gemini
-  - nvidia
-
-# Configuração por provedor
+- gemini
+- nvidia
 providers:
   gemini:
     enabled: true
     model: gemini-3.8-flash
-
-  groq:
-    enabled: false
-    model: llama-3.3-70b-versatile
-    # api_key: (via env GROQ_API_KEY ou secrets.env)
-
   nvidia:
     enabled: true
     model: nvidia/nemotron-3-super-120b-a12b
-    # api_key: (via env NVIDIA_API_KEY ou secrets.env)
-
-  openrouter:
-    enabled: false
-    model: meta-llama/llama-3.3-70b-instruct:free
-    # api_key: (via env OPENROUTER_API_KEY ou secrets.env)
-
-  cerebras:
-    enabled: false
-    model: llama-3.3-70b
-    # api_key: (via env CEREBRAS_API_KEY ou secrets.env)
-
-  mistral:
-    enabled: false
-    model: mistral-large-latest
-    # api_key: (via env MISTRAL_API_KEY ou secrets.env)
-
-  openai:
-    enabled: false
-    model: gpt-4o-mini
-    # api_key: (via env OPENAI_API_KEY ou secrets.env)
-
-  custom:
-    enabled: false
-    model: ""
-    base_url: ""
-    # api_key: (via env CUSTOM_LLM_API_KEY ou secrets.env)

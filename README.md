@@ -14,7 +14,7 @@ O sistema monitora automaticamente fontes regulatórias internacionais de embarc
 
 ```
 Fontes Regulatórias → Crawler → Download → Queue → LLM → Normalização → Dashboard
-     (6 fontes)    (Playwright)  (PDF/HTML)  (.jsonl)  (Groq/NVIDIA)  (Pydantic)   (Validação)
+     (6 fontes)    (Playwright)  (PDF/HTML)  (.jsonl)  (Gemini/NVIDIA)  (Pydantic)   (Validação)
 ```
 
 ---
@@ -34,7 +34,7 @@ Fontes Regulatórias → Crawler → Download → Queue → LLM → Normalizaç�
 | Camada | Tecnologia | Função |
 |---|---|---|
 | Crawler | Playwright + BeautifulSoup | Acessar e baixar documentos |
-| Processor | Groq / NVIDIA / OpenRouter / Gemini | Analisar documentos com IA |
+| Processor | Gemini / NVIDIA | Analisar documentos com IA |
 | API | FastAPI + SQLAlchemy | Servir dados e controlar pipeline |
 | Dashboard | Bootstrap 5 + Chart.js + HTMX + SSE | Visualizar e validar análises |
 | DB | PostgreSQL 16 (ou SQLite automático) | Armazenar resultados |
@@ -152,22 +152,21 @@ DATABASE_URL=postgresql+psycopg2://regulatory:sua_senha@localhost:5432/regulator
 
 ### Provedores LLM
 
-O sistema suporta vários provedores de IA gratuitos. Configure **pelo menos um** para usar o pipeline.
+O sistema usa **Google Gemini** e **NVIDIA NIM** (ambos gratuitos). Configure **pelo menos um** para usar o pipeline.
 
-#### Groq (recomendado — mais rápido)
+#### Google Gemini (recomendado)
 
-1. Acesse https://console.groq.com
-2. Crie uma conta (gratuita)
-3. Vá em **API Keys** → **Create API Key**
-4. Copie a chave (começa com `gsk_`)
-5. Em `config/secrets.env`:
+1. Acesse https://aistudio.google.com
+2. Vá em **Get API Key**
+3. Copie a chave
+4. Em `config/secrets.env`:
 
 ```env
-GROQ_API_KEY=gsk_sua_chave_aqui
+GOOGLE_API_KEY=sua_chave_aqui
 ```
 
-6. No dashboard, vá em **Configurações** e cole a chave
-7. Vá em **Provedores IA** e clique em **Ativar** no Groq
+5. No dashboard, vá em **Configurações** e cole a chave
+6. Vá em **Provedores IA** e clique em **Ativar** no Gemini
 
 #### NVIDIA NIM (gratuito)
 
@@ -181,39 +180,15 @@ GROQ_API_KEY=gsk_sua_chave_aqui
 NVIDIA_API_KEY=nvapi-sua_chave_aqui
 ```
 
-#### OpenRouter (modelos gratuitos)
-
-1. Acesse https://openrouter.ai
-2. Crie uma conta
-3. Vá em **Keys** → **Create Key**
-4. Copie a chave (começa com `sk-or-`)
-5. Em `config/secrets.env`:
-
-```env
-OPENROUTER_API_KEY=sk-or-sua_chave_aqui
-```
-
-#### Google Gemini
-
-1. Acesse https://aistudio.google.com
-2. Vá em **Get API Key**
-3. Copie a chave
-4. Em `config/secrets.env`:
-
-```env
-GOOGLE_API_KEY=sua_chave_aqui
-```
-
 #### Configurar provedor ativo
 
 Em `config/llm.yaml`:
 
 ```yaml
-active: groq                    # Provedor ativo
+active: gemini                  # Provedor ativo
 fallback_chain:                 # Ordem de fallback
-  - groq
+  - gemini
   - nvidia
-  - openrouter
 ```
 
 Ou pelo dashboard: **Provedores IA** → clique em **Ativar** no provedor desejado.
@@ -261,7 +236,7 @@ Abra o navegador em: **http://127.0.0.1:8000**
 ### 3. Configurar provedor de IA
 
 1. Clique em **Configurações** no menu lateral
-2. Cole a chave de API do provedor escolhido (ex: Groq)
+2. Cole a chave de API do provedor escolhido (ex: Gemini)
 3. Clique em **Salvar Chaves**
 4. Clique em **Provedores IA** no menu lateral
 5. Clique em **Ativar** no provedor desejado
@@ -470,7 +445,7 @@ curl http://127.0.0.1:8000/pipeline/providers
 #### Ativar um provedor
 
 ```bash
-curl -X POST http://127.0.0.1:8000/pipeline/providers/groq/activate
+curl -X POST http://127.0.0.1:8000/pipeline/providers/gemini/activate
 ```
 
 ### Exemplos com Python
@@ -732,9 +707,8 @@ playwright install-deps  # Linux apenas
 **Solução:** O sistema faz fallback automático para o próximo provedor. Configure mais de um em `config/secrets.env`:
 
 ```env
-GROQ_API_KEY=gsk_...
+GOOGLE_API_KEY=...
 NVIDIA_API_KEY=nvapi-...
-OPENROUTER_API_KEY=sk-or-...
 ```
 
 ### Erro: "Credenciais IMODOCS não configuradas"

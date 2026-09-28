@@ -53,7 +53,7 @@ Extract Text (PyMuPDF/BS4)
 Build Prompt (prompt.yaml)
     │
     ▼
-LLM Provider (Groq/NVIDIA/OpenRouter/Gemini)
+LLM Provider (Gemini/NVIDIA)
     │
     ▼
 Normalize (Pydantic Schema)
@@ -145,11 +145,10 @@ ADAPTER_MAP = {
 ### 2. LLM Provider Fallback
 ```yaml
 # config/llm.yaml
-active: groq
+active: gemini
 fallback_chain:
-  - groq
+  - gemini
   - nvidia
-  - openrouter
 ```
 
 ### 3. Pipeline State Singleton

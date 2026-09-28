@@ -221,13 +221,7 @@ SECRETS_PATH = Path(__file__).resolve().parent.parent.parent / "config" / "secre
 # Keys that are safe to show (masked) vs sensitive (never return value)
 SENSITIVE_KEYS = {
     "GOOGLE_API_KEY",
-    "GROQ_API_KEY",
     "NVIDIA_API_KEY",
-    "OPENROUTER_API_KEY",
-    "CEREBRAS_API_KEY",
-    "MISTRAL_API_KEY",
-    "OPENAI_API_KEY",
-    "CUSTOM_LLM_API_KEY",
     "IMODOCS_PASSWORD",
 }
 SAFE_KEYS = {

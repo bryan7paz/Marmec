@@ -64,7 +64,7 @@ def _call_openai_compatible(
     api_key: str,
     base_url: str,
 ) -> dict[str, Any]:
-    """Any OpenAI-compatible API (Groq, NVIDIA, OpenRouter, Cerebras, etc.)."""
+    """Any OpenAI-compatible API (NVIDIA NIM, etc.)."""
     from openai import OpenAI
 
     client = OpenAI(api_key=api_key, base_url=base_url)
@@ -91,51 +91,10 @@ PROVIDERS = {
         "call": _call_gemini,
         "needs_base_url": False,
     },
-    "groq": {
-        "name": "Groq",
-        "env_key": "GROQ_API_KEY",
-        "base_url": "https://api.groq.com/openai/v1",
-        "call": _call_openai_compatible,
-        "needs_base_url": True,
-    },
     "nvidia": {
         "name": "NVIDIA NIM",
         "env_key": "NVIDIA_API_KEY",
         "base_url": "https://integrate.api.nvidia.com/v1",
-        "call": _call_openai_compatible,
-        "needs_base_url": True,
-    },
-    "openrouter": {
-        "name": "OpenRouter",
-        "env_key": "OPENROUTER_API_KEY",
-        "base_url": "https://openrouter.ai/api/v1",
-        "call": _call_openai_compatible,
-        "needs_base_url": True,
-    },
-    "cerebras": {
-        "name": "Cerebras",
-        "env_key": "CEREBRAS_API_KEY",
-        "base_url": "https://api.cerebras.ai/v1",
-        "call": _call_openai_compatible,
-        "needs_base_url": True,
-    },
-    "mistral": {
-        "name": "Mistral AI",
-        "env_key": "MISTRAL_API_KEY",
-        "base_url": "https://api.mistral.ai/v1",
-        "call": _call_openai_compatible,
-        "needs_base_url": True,
-    },
-    "openai": {
-        "name": "OpenAI",
-        "env_key": "OPENAI_API_KEY",
-        "base_url": "https://api.openai.com/v1",
-        "call": _call_openai_compatible,
-        "needs_base_url": True,
-    },
-    "custom": {
-        "name": "Custom (OpenAI-compatible)",
-        "env_key": "CUSTOM_LLM_API_KEY",
         "call": _call_openai_compatible,
         "needs_base_url": True,
     },
