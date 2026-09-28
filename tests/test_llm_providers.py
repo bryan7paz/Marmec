@@ -33,3 +33,32 @@ class TestGenerateStructured:
             raise AssertionError("Should have raised")
         except Exception:
             pass
+
+
+class TestGetEnv:
+    def test_reads_os_environ_first(self, monkeypatch):
+        monkeypatch.setenv("LLMP_TEST_KEY", "from-os")
+        from core.llm_providers import _get_env
+
+        assert _get_env("LLMP_TEST_KEY") == "from-os"
+
+    def test_falls_back_to_secrets_env(self, monkeypatch, tmp_path):
+        """Regressão: chaves em config/secrets.env devem ser vistas pelo provedor.
+
+        Antes do fix _get_env lia só os.environ — segredos do dashboard
+        nunca chegavam ao provedor (\"Nenhum provedor LLM disponível\").
+        """
+        monkeypatch.delenv("LLMP_TEST_KEY", raising=False)
+        (tmp_path / "secrets.env").write_text("LLMP_TEST_KEY=from-file\n", encoding="utf-8")
+        monkeypatch.setattr("core.config.CONFIG_DIR", tmp_path)
+
+        from core.llm_providers import _get_env
+
+        assert _get_env("LLMP_TEST_KEY") == "from-file"
+
+    def test_missing_everywhere_returns_fallback(self, monkeypatch):
+        monkeypatch.delenv("LLMP_TEST_KEY", raising=False)
+        monkeypatch.setattr("core.config.CONFIG_DIR", __import__("pathlib").Path("/nonexistent"))
+        from core.llm_providers import _get_env
+
+        assert _get_env("LLMP_TEST_KEY", "dflt") == "dflt"

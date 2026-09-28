@@ -21,24 +21,21 @@
 # ══════════════════════════════════════════════════════════════════
 
 # Provedor ativo (será usado primeiro)
-active: groq
+active: gemini
 
 # Cadeia de fallback (ordem de tentativa se o ativo falhar)
 fallback_chain:
-  - groq
-  - nvidia
-  - openrouter
-  - cerebras
   - gemini
+  - nvidia
 
 # Configuração por provedor
 providers:
   gemini:
     enabled: true
-    model: gemini-2.0-flash
+    model: gemini-3.8-flash
 
   groq:
-    enabled: true
+    enabled: false
     model: llama-3.3-70b-versatile
     # api_key: (via env GROQ_API_KEY ou secrets.env)
 

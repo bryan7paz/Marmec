@@ -64,10 +64,13 @@ class TestSpiderRegistry:
 
 
 class TestStorage:
-    def test_enqueue_and_read(self, tmp_path):
+    def test_enqueue_and_read(self, tmp_path, monkeypatch):
         import time
 
         from crawler import storage
+
+        # Evita poluir data/queue.jsonl real com entradas de teste
+        monkeypatch.setattr(storage, "DATA_DIR", tmp_path)
 
         item = {
             "title": f"Test Doc {time.time()}",
@@ -80,8 +83,11 @@ class TestStorage:
         assert record is not None
         assert "local_path" in record
 
-    def test_dedup_same_content(self, tmp_path):
+    def test_dedup_same_content(self, tmp_path, monkeypatch):
         from crawler import storage
+
+        # Evita poluir data/queue.jsonl real com entradas de teste
+        monkeypatch.setattr(storage, "DATA_DIR", tmp_path)
 
         item = {
             "title": "Test Dedup",

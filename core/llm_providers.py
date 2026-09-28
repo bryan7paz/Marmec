@@ -30,7 +30,12 @@ def _load_config() -> dict[str, Any]:
 def _get_env(key: str, fallback: str = "") -> str:
     import os
 
-    return os.environ.get(key, fallback)
+    if key in os.environ:
+        return os.environ[key]
+    # secrets.env (config/secrets.env) — chaves salvas no dashboard ficam lá
+    from core.config import load_env
+
+    return load_env().get(key, fallback)
 
 
 # ── Provider implementations ─────────────────────────────────────
