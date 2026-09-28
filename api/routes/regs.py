@@ -375,13 +375,150 @@ def export_pdf(
 # ── Excel Export ─────────────────────────────────────────────────
 
 
+# Rótulos legíveis — códigos crus não comunicam nada numa planilha
+ASSUNTO_LABELS = {
+    "SEG": "SEG — Segurança",
+    "INC": "INC — Incêndio",
+    "COM": "COM — Comunicação / Rádio",
+    "NAV": "NAV — Navegação",
+    "CON": "CON — Construção Naval",
+    "TRI": "TRI — Tripulação / Certificação",
+    "AMB": "AMB — Meio Ambiente",
+    "NAU": "NAU — Naufrágio / Salvamento",
+    "IMO": "IMO — Convenções Gerais",
+}
+APLICACAO_LABELS = {
+    "D": "D — Ação Direta",
+    "I": "I — Ação Indireta",
+    "NP": "NP — Não Pertinente",
+}
+STATUS_LABELS = {"R": "R — Revisão", "N": "N — Nova Versão"}
+VALIDACAO_LABELS = {
+    "aprovado": "Aprovado",
+    "reprovado": "Reprovado",
+    "pendente": "Pendente",
+}
+
+# Significados completos (aba "Legenda")
+LEGENDA_APLICACAO = [
+    (
+        "D — Ação Direta",
+        "Norma diretamente aplicável à Marmec: deve constar em procedimentos ou exige ação.",
+    ),
+    (
+        "I — Ação Indireta",
+        "A Marmec precisa estar ciente, mas sem medidas diretas de implementação.",
+    ),
+    (
+        "NP — Não Pertinente",
+        "Fora do escopo da Marmec (construção naval, operação exclusivamente em outros países, ou assunto não aplicável às suas atividades/embarcações).",
+    ),
+]
+LEGENDA_STATUS = [
+    ("R — Revisão", "Norma estabelecida ou revisada (atualizada/alterada), para conhecimento."),
+    ("N — Nova Versão", "Norma nova, para conhecimento."),
+]
+LEGENDA_VALIDACAO = [
+    ("Pendente", "Aguardando análise/validação humana."),
+    ("Aprovado", "Revisado e aprovado pela equipe."),
+    ("Reprovado", "Revisado e reprovado pela equipe."),
+]
+LEGENDA_REGRA = (
+    "Marcar NP quando a norma se refere exclusivamente a construção naval, operações "
+    "fora do Brasil/Panamá ou assuntos fora do escopo da Marmec. EXCEÇÃO: assuntos de "
+    "aplicação geral (segurança, incêndio, naufrágio/salvamento, convenções IMO) são "
+    "pertinentes mesmo globais — não marque NP por isso."
+)
+
+# Larguras por coluna (caracteres)
+_EXCEL_WIDTHS = {
+    "Data Publicação": 13,
+    "Entrada em Vigor": 13,
+    "Fonte": 16,
+    "Norma": 26,
+    "Assunto": 24,
+    "Aplicação": 20,
+    "Status": 17,
+    "Requisito": 20,
+    "Item": 20,
+    "Itens Modificados": 42,
+    "Ação Sugerida": 46,
+    "Validação": 13,
+    "Validado por": 16,
+    "URL Origem": 30,
+    "ID": 12,
+}
+
+# Cores semânticas (estilo Excel: fundo claro + fonte escura)
+_APLICACAO_FILL = {"D": "C6EFCE", "I": "DDEBF7", "NP": "E7E6E6"}
+_APLICACAO_FONT = {"D": "006100", "I": "1F4E79", "NP": "595959"}
+_STATUS_FILL = {"R": "FFEB9C", "N": "BDD7EE"}
+_STATUS_FONT = {"R": "9C6500", "N": "1F4E79"}
+_VALIDACAO_FILL = {"aprovado": "C6EFCE", "reprovado": "FFC7CE", "pendente": "FFEB9C"}
+_VALIDACAO_FONT = {"aprovado": "006100", "reprovado": "9C0006", "pendente": "9C6500"}
+
+
+def _excel_value(col: str, row) -> tuple[str, str | None, str | None]:
+    """Return (value, fill_hex, font_hex) for a data cell."""
+    if col == "Data Publicação":
+        fmt = "%d/%m/%Y"
+        return (row.data_publicacao.strftime(fmt) if row.data_publicacao else "—", None, None)
+    if col == "Entrada em Vigor":
+        fmt = "%d/%m/%Y"
+        return (row.entrada_em_vigor.strftime(fmt) if row.entrada_em_vigor else "—", None, None)
+    if col == "Fonte":
+        return (row.source_name or row.source_id or "—", None, None)
+    if col == "Norma":
+        return (row.norma or "—", None, None)
+    if col == "Assunto":
+        code = (row.assunto or "").strip()
+        return (ASSUNTO_LABELS.get(code, code or "—"), None, None)
+    if col == "Aplicação":
+        code = (row.aplicacao or "").strip()
+        return (
+            APLICACAO_LABELS.get(code, code or "—"),
+            _APLICACAO_FILL.get(code),
+            _APLICACAO_FONT.get(code),
+        )
+    if col == "Status":
+        code = (row.status or "").strip()
+        fill = _STATUS_FILL.get(code)
+        return (STATUS_LABELS.get(code, code or "—"), fill, _STATUS_FONT.get(code))
+    if col == "Requisito":
+        return (row.requisito or "—", None, None)
+    if col == "Item":
+        return (row.item or "—", None, None)
+    if col == "Itens Modificados":
+        return (row.itens_modificados or "— (sem alterações registradas)", None, None)
+    if col == "Ação Sugerida":
+        if row.acao_sugerida:
+            return (row.acao_sugerida, "FFF2CC", None)
+        if (row.aplicacao or "").strip() == "NP":
+            return ("— (não pertinente: sem ação necessária)", None, None)
+        return ("— (sem ação registrada)", None, None)
+    if col == "Validação":
+        code = (row.status_validacao or "pendente").strip()
+        return (
+            VALIDACAO_LABELS.get(code, code),
+            _VALIDACAO_FILL.get(code),
+            _VALIDACAO_FONT.get(code),
+        )
+    if col == "Validado por":
+        return (row.validated_by or "—", None, None)
+    if col == "URL Origem":
+        return (row.url_origem or "—", None, None)
+    if col == "ID":
+        return (row.id or "—", None, None)
+    return ("—", None, None)
+
+
 @router.get("/export/excel")
 def export_excel(
     validacao: str | None = None,
     fonte: str | None = None,
     db: Session = Depends(get_db),
 ):
-    """Export analysis results as an Excel spreadsheet."""
+    """Export analysis results as a formatted Excel spreadsheet."""
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
@@ -393,30 +530,28 @@ def export_excel(
         q = q.filter(models.RegulatoryAnalysis.source_id == fonte)
     rows = q.order_by(models.RegulatoryAnalysis.created_at.desc()).all()
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Análise Regulatória"
-
-    # Headers
     headers = [
-        "ID",
-        "Fonte",
         "Data Publicação",
         "Entrada em Vigor",
-        "Requisito",
+        "Fonte",
         "Norma",
         "Assunto",
         "Aplicação",
         "Status",
+        "Requisito",
         "Item",
         "Itens Modificados",
         "Ação Sugerida",
         "Validação",
         "Validado por",
         "URL Origem",
+        "ID",
     ]
 
-    # Style headers
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Análise Regulatória"
+
     header_fill = PatternFill(start_color="0D6EFD", end_color="0D6EFD", fill_type="solid")
     header_font = Font(color="FFFFFF", bold=True, size=10)
     thin_border = Border(
@@ -430,43 +565,83 @@ def export_excel(
         cell = ws.cell(row=1, column=col, value=header)
         cell.fill = header_fill
         cell.font = header_font
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         cell.border = thin_border
+    ws.row_dimensions[1].height = 26
 
-    # Data rows
+    # Data rows — valores traduzidos + cores semânticas
     for row_idx, row in enumerate(rows, 2):
-        data = [
-            row.id,
-            row.source_id,
-            row.data_publicacao.isoformat() if row.data_publicacao else "",
-            row.entrada_em_vigor.isoformat() if row.entrada_em_vigor else "",
-            row.requisito or "",
-            row.norma or "",
-            row.assunto or "",
-            row.aplicacao or "",
-            row.status or "",
-            row.item or "",
-            row.itens_modificados or "",
-            row.acao_sugerida or "",
-            row.status_validacao or "",
-            row.validated_by or "",
-            row.url_origem or "",
-        ]
-        for col, value in enumerate(data, 1):
-            cell = ws.cell(row=row_idx, column=col, value=value)
+        max_lines = 1
+        for col_idx, header in enumerate(headers, 1):
+            value, fill_color, font_color = _excel_value(header, row)
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
             cell.border = thin_border
             cell.alignment = Alignment(vertical="top", wrap_text=True)
+            if fill_color:
+                fill = PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid")
+                cell.fill = fill
+            if font_color:
+                cell.font = Font(color=font_color, bold=True, size=10)
+            if header == "URL Origem" and value not in ("—", ""):
+                cell.hyperlink = value
+                cell.font = Font(color="0563C1", underline="single", size=10)
+            width = _EXCEL_WIDTHS.get(header, 20)
+            lines = max(1, -(-len(str(value)) // max(width - 2, 8)))
+            max_lines = max(max_lines, lines)
+        ws.row_dimensions[row_idx].height = min(15 * max_lines + 4, 150)
 
-    # Auto-width columns
-    for col in range(1, len(headers) + 1):
-        max_length = max(
-            len(str(ws.cell(row=r, column=col).value or ""))
-            for r in range(1, min(ws.max_row + 1, 50))
-        )
-        ws.column_dimensions[get_column_letter(col)].width = min(max_length + 2, 40)
+    # Column widths
+    for col_idx, header in enumerate(headers, 1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = _EXCEL_WIDTHS.get(header, 20)
 
-    # Freeze header
+    # Freeze header + autofilter
     ws.freeze_panes = "A2"
+    if rows:
+        last = get_column_letter(len(headers))
+        ws.auto_filter.ref = f"A1:{last}{len(rows) + 1}"
+
+    # ── Aba Legenda ────────────────────────────────────────────
+    leg = wb.create_sheet("Legenda")
+    leg.column_dimensions["A"].width = 26
+    leg.column_dimensions["B"].width = 100
+    wrap = Alignment(vertical="top", wrap_text=True)
+
+    leg["A1"] = "Legenda — como ler esta planilha"
+    leg["A1"].font = Font(bold=True, size=13, color="0D6EFD")
+
+    def _section(r: int, text: str) -> int:
+        fill = PatternFill(start_color="0D6EFD", end_color="0D6EFD", fill_type="solid")
+        cell = leg.cell(row=r, column=1, value=text)
+        cell.font = Font(bold=True, size=11, color="FFFFFF")
+        cell.fill = fill
+        leg.cell(row=r, column=2).fill = fill
+        return r + 1
+
+    def _pairs(r: int, pairs: list[tuple[str, str]]) -> int:
+        for code, meaning in pairs:
+            a = leg.cell(row=r, column=1, value=code)
+            a.font = Font(bold=True, size=10)
+            a.alignment = wrap
+            b = leg.cell(row=r, column=2, value=meaning)
+            b.alignment = wrap
+            leg.row_dimensions[r].height = max(15, 14 * (-(-len(meaning) // 96)))
+            r += 1
+        return r + 1
+
+    r = 3
+    r = _section(r, "Aplicação")
+    r = _pairs(r, LEGENDA_APLICACAO)
+    r = _section(r, "Status da Norma")
+    r = _pairs(r, LEGENDA_STATUS)
+    r = _section(r, "Assunto")
+    r = _pairs(r, list(ASSUNTO_LABELS.items()))
+    r = _section(r, "Validação Humana")
+    r = _pairs(r, LEGENDA_VALIDACAO)
+    r = _section(r, "Regra de Pertinência")
+    cell = leg.cell(row=r, column=1, value=LEGENDA_REGRA)
+    cell.alignment = wrap
+    leg.merge_cells(start_row=r, start_column=1, end_row=r, end_column=2)
+    leg.row_dimensions[r].height = 14 * (-(-len(LEGENDA_REGRA) // 120)) + 10
 
     # Save to buffer
     buf = io.BytesIO()

@@ -60,6 +60,79 @@ class TestExportExcel:
         resp = client.get("/regs/export/excel?validacao=aprovado")
         assert resp.status_code in (200, 500)
 
+    def test_excel_readable_labels(self, client):
+        """Códigos crus viram rótulos legíveis e a ação sugerida aparece."""
+        from io import BytesIO
+
+        from api.database import SessionLocal
+        from api.models import RegulatoryAnalysis
+        from openpyxl import load_workbook
+
+        db = SessionLocal()
+        row = RegulatoryAnalysis(
+            id="xl-labels-1",
+            source_id="iacs",
+            source_name="IACS",
+            norma="XL/Circ. Teste",
+            assunto="SEG",
+            aplicacao="D",
+            status="R",
+            acao_sugerida="Revisar procedimento de segurança a bordo",
+            documento_hash="hash-xl-labels-1",
+        )
+        db.add(row)
+        db.commit()
+        try:
+            resp = client.get("/regs/export/excel")
+            assert resp.status_code == 200
+            wb = load_workbook(BytesIO(resp.content))
+            assert "Legenda" in wb.sheetnames
+
+            ws = wb["Análise Regulatória"]
+            values = [c.value for row_ in ws.iter_rows(min_row=2) for c in row_]
+            assert "D — Ação Direta" in values
+            assert "SEG — Segurança" in values
+            assert "R — Revisão" in values
+            assert "Revisar procedimento de segurança a bordo" in values
+        finally:
+            db.delete(row)
+            db.commit()
+            db.close()
+
+    def test_excel_empty_action_is_explained(self, client):
+        """Ação sugerida vazia recebe texto explicativo em vez de célula vazia."""
+        from io import BytesIO
+
+        from api.database import SessionLocal
+        from api.models import RegulatoryAnalysis
+        from openpyxl import load_workbook
+
+        db = SessionLocal()
+        row = RegulatoryAnalysis(
+            id="xl-np-1",
+            source_id="imo",
+            source_name="IMO",
+            norma="XL/NP Teste",
+            aplicacao="NP",
+            status="N",
+            acao_sugerida=None,
+            documento_hash="hash-xl-np-1",
+        )
+        db.add(row)
+        db.commit()
+        try:
+            resp = client.get("/regs/export/excel")
+            assert resp.status_code == 200
+            wb = load_workbook(BytesIO(resp.content))
+            ws = wb["Análise Regulatória"]
+            values = [c.value for row_ in ws.iter_rows(min_row=2) for c in row_]
+            assert "NP — Não Pertinente" in values
+            assert "— (não pertinente: sem ação necessária)" in values
+        finally:
+            db.delete(row)
+            db.commit()
+            db.close()
+
 
 class TestExportPDF:
     def test_pdf_empty(self, client):
