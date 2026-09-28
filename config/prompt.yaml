@@ -4,9 +4,9 @@ system: |
   marítimas e produz uma análise estruturada e objetiva.
 
 contexto_empresa: |
-  A empresa de referência é a "Seagems", operadora marítima que trabalha com
+  A empresa de referência é a "Marmec", operadora marítima que trabalha com
   embarcações do tipo pipe-laying (lançamento de linhas/dutos).
-  A Seagems atua SOMENTE no Brasil e no Panamá. Não possui embarcações operando
+  A Marmec atua SOMENTE no Brasil e no Panamá. Não possui embarcações operando
   no exterior nem embarcações em construção.
 
 instrucoes: |
@@ -36,9 +36,9 @@ legenda_assunto: |
     IMO: Convenções gerais da IMO
 
 legenda_aplicacao:
-  D: "Ação direta - norma diretamente aplicável à Seagems (deve constar em procedimentos ou exige ação)"
-  I: "Ação indireta - a Seagems precisa estar ciente, mas sem medidas diretas de implementação"
-  NP: "Não pertinente - fora do escopo da Seagems (construção naval, operação exclusivamente em outros países, ou assunto não aplicável às suas atividades/embarcações)"
+  D: "Ação direta - norma diretamente aplicável à Marmec (deve constar em procedimentos ou exige ação)"
+  I: "Ação indireta - a Marmec precisa estar ciente, mas sem medidas diretas de implementação"
+  NP: "Não pertinente - fora do escopo da Marmec (construção naval, operação exclusivamente em outros países, ou assunto não aplicável às suas atividades/embarcações)"
 
 legenda_status:
   R: "Revisão - norma estabelecida ou revisada (atualizada/alterada), para conhecimento"
@@ -51,7 +51,7 @@ regras_duras: |
       status em {R, N}
   - REGRA DE PERTINÊNCIA (classificação de "aplicacao"):
       * NP quando a norma se refere exclusivamente a construção naval, operações
-        em países fora do Brasil/Panamá, ou assuntos fora do escopo da Seagems.
+        em países fora do Brasil/Panamá, ou assuntos fora do escopo da Marmec.
       * EXCEÇÃO: normas sobre assuntos de aplicação geral (segurança, combate a
         incêndio, naufrágio/salvamento, convenções gerais da IMO) são pertinentes
         mesmo que de caráter global — não as marque como NP por isso.

@@ -186,3 +186,30 @@ class TestRateLimiter:
         request = self._make_request()
         # __call__ delegates to check
         limiter(request)
+
+
+class TestDependenteFantasma:
+    """Regressão: Depends(instância) não pode gerar query param `request`.
+
+    Com `from __future__ import annotations` no módulo do middleware, o FastAPI
+    não resolve `Request` em instâncias (sem __globals__) e exigia um query
+    param fantasma "request" → 422 em toda rota roteada (os testes de rota não
+    pegavam porque sobrescrevem a dependência).
+    """
+
+    def test_api_key_auth_sem_query_params(self):
+        from api.middleware import api_key_auth
+        from fastapi.dependencies.utils import get_dependant
+
+        dependant = get_dependant(path="/x", call=api_key_auth)
+        assert [p.name for p in dependant.query_params] == []
+
+    def test_rota_rounada_sem_override_retorna_200(self):
+        from api.main import app
+        from fastapi.testclient import TestClient
+
+        # Sem dependency_overrides — exatamente como em produção
+        with TestClient(app, raise_server_exceptions=False) as c:
+            resp = c.get("/regs/?page=1&size=5")
+            assert resp.status_code == 200
+            assert "items" in resp.json()

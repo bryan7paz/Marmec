@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import unicodedata
 from pathlib import Path
 
 from core.config import load_env, logger
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
+
+
+def _sqlite_unaccent(value: str | None) -> str | None:
+    """SQL function: strip accents (SQLite has no native unaccent)."""
+    if value is None:
+        return None
+    return unicodedata.normalize("NFD", value).encode("ascii", "ignore").decode("ascii")
+
 
 env = load_env()
 DATABASE_URL = env.get("DATABASE_URL", "")
@@ -41,6 +50,7 @@ if engine is None:
         cursor = dbapi_conn.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.close()
+        dbapi_conn.create_function("unaccent", 1, _sqlite_unaccent)
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -9,6 +9,7 @@ from core.observability import setup_telemetry
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .database import Base, engine
@@ -30,7 +31,7 @@ setup_telemetry()
 
 # ── app ─────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="Regulatory Pipeline — Seagems",
+    title="Regulatory Pipeline — Marmec",
     description="""
 ## Sistema de Monitoramento Regulatório Marítimo
 
@@ -50,11 +51,15 @@ Automatiza o monitoramento de normas regulatórias internacionais para operadore
 - Notificações de eventos do pipeline
     """,
     version="1.0.0",
-    contact={"name": "Seagems", "email": "contato@seagems.com"},
+    contact={"name": "Marmec", "email": "contato@marmec.com.br"},
     license_info={"name": "Proprietário"},
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# ── static assets (logo, favicon) ──────────────────────────────────
+_static_dir = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 app.add_middleware(TelemetryMiddleware)
 app.add_middleware(

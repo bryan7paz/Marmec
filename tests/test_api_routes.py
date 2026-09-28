@@ -120,3 +120,20 @@ class TestNotFound:
     def test_unknown_route(self, client):
         resp = client.get("/nonexistent")
         assert resp.status_code == 404
+
+
+class TestStaticAssets:
+    def test_logo_served(self, client):
+        resp = client.get("/static/img/logo.png")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "image/png"
+        assert len(resp.content) > 1000
+
+    def test_favicon_served(self, client):
+        resp = client.get("/static/img/favicon.ico")
+        assert resp.status_code == 200
+
+    def test_openapi_title_is_marmec(self, client):
+        resp = client.get("/openapi.json")
+        if resp.status_code == 200:
+            assert "Marmec" in resp.json()["info"]["title"]

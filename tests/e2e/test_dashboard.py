@@ -16,7 +16,7 @@ class TestDashboard:
         try:
             response = page.goto(base_url, wait_until="domcontentloaded")
             assert response.status == 200
-            assert "Seagems" in page.title() or "Dashboard" in page.content()
+            assert "Marmec" in page.title() or "Dashboard" in page.content()
         finally:
             page.close()
 

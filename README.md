@@ -1,6 +1,6 @@
-# Regulatory Pipeline — Seagems
+# Regulatory Pipeline — Marmec
 
-Pipeline automatizado de monitoramento regulatório marítimo para a **Seagems** (operadora de pipe-laying).
+Pipeline automatizado de monitoramento regulatório marítimo para a **Marmec** (engenharia, consultoria e treinamento — controle regulatório em Brasil e Panamá).
 
 Crawl de 6 fontes regulatórias → Extração de texto → Análise via LLM → Dashboard de validação humana.
 
@@ -55,20 +55,31 @@ Fontes Regulatórias → Crawler → Download → Queue → LLM → Normalizaç�
 
 ---
 
-## Instalação
+## Instalação e Execução
 
-### Windows (automático)
+### Início rápido (1 clique — recomendado)
 
 ```bash
-# Duplo-clique em setup.bat OU rode no terminal:
-setup.bat
+# Windows — duplo-clique em:
+start.bat
+
+# Linux / macOS:
+./start.sh
 ```
 
-### Linux / macOS (automático)
+Na **primeira execução** o script roda o setup automaticamente (virtualenv,
+dependências, Chromium, `secrets.env`) e depois sobe o servidor em
+`http://127.0.0.1:8000`, abrindo o navegador sozinho. Nas execuções seguintes,
+só inicia o servidor.
+
+### Somente setup (manual)
 
 ```bash
-chmod +x setup.sh
-./setup.sh
+# Windows:
+setup.bat
+
+# Linux / macOS:
+chmod +x setup.sh && ./setup.sh
 ```
 
 ### O que o setup faz automaticamente
@@ -549,7 +560,7 @@ regulatory-pipeline/
 ├── processor/                  # Módulo de processamento com LLM
 │   ├── pipeline.py             # Fila → Extração → LLM → Normalização
 │   ├── gateway.py              # Gateway multi-provedor
-│   ├── prompt_builder.py       # Montagem do prompt com regras Seagems
+│   ├── prompt_builder.py       # Montagem do prompt com regras Marmec
 │   ├── normalizer.py           # Validação de enums
 │   ├── schema.py               # Pydantic RegulatoryAnalysis
 │   └── extract.py              # Extração de texto (PyMuPDF/BS4)
@@ -571,10 +582,10 @@ regulatory-pipeline/
 │       └── index.html          # Dashboard legado
 ├── config/
 │   ├── sources.yaml            # 6 fontes configuradas
-│   ├── prompt.yaml             # Prompt com regras Seagems
+│   ├── prompt.yaml             # Prompt com regras Marmec
 │   ├── llm.yaml                # Config multi-provedor LLM
 │   └── secrets.env.example     # Template de credenciais
-├── tests/                      # 148 testes unitários + 27 e2e
+├── tests/                      # 163 testes unitários + 27 e2e
 │   ├── test_config.py
 │   ├── test_schema.py
 │   ├── test_normalizer.py
@@ -643,7 +654,7 @@ Tabela `regulatory_analysis` — 10 colunas regulatórias + metadados:
 | `validated_at` | DateTime | Data da validação |
 | `validated_by` | String | Quem validou |
 
-### Regra de Pertinência (Seagems)
+### Regra de Pertinência (Marmec)
 
 - **NP**: norma sobre construção naval ou operação exclusivamente fora do Brasil/Panamá
 - **EXCEÇÃO**: assuntos gerais (segurança, incêndio, naufrágio, convenções IMO) são pertinentes mesmo globais

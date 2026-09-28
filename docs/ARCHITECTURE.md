@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-O **Regulatory Pipeline** é um sistema automatizado de monitoramento regulatório para a Seagems, operador de tubulação submarina. O sistema crawler fontes regulatórias internacionais, processa documentos via LLM, e apresenta resultados em um dashboard para validação humana.
+O **Regulatory Pipeline** é um sistema automatizado de monitoramento regulatório para a Marmec, prestadora de controle regulatório (escopo operacional: Brasil e Panamá, pipe-laying). O sistema crawler fontes regulatórias internacionais, processa documentos via LLM, e apresenta resultados em um dashboard para validação humana.
 
 ## Diagrama de Componentes
 

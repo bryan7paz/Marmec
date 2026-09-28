@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import csv
 import io
+import unicodedata
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from .. import models
@@ -17,6 +18,55 @@ from ..database import get_db
 from ..schemas import AnalysisDetail, AnalysisOut, ValidationAction
 
 router = APIRouter(prefix="/regs", tags=["regs"])
+
+
+# ── Search helpers (accent-insensitive, multi-word, quoted phrase) ──
+
+# PostgreSQL translate() map (SQLite uses the `unaccent` SQL function instead)
+_PG_FROM = "áàâãäéèêëíìîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑ"
+_PG_TO = "aaaaaeeeeiiiiooooouuuucnAAAAAEEEEIIIIOOOOOUUUUCN"
+
+_SEARCH_FIELDS = (
+    "norma",
+    "requisito",
+    "item",
+    "itens_modificados",
+    "acao_sugerida",
+    "source_name",
+)
+
+
+def _strip_accents(text: str) -> str:
+    """Remove accents from a Python string (for query terms)."""
+    return unicodedata.normalize("NFD", text).encode("ascii", "ignore").decode("ascii")
+
+
+def _accent_expr(col, dialect: str):
+    """Return an accent-stripped SQL expression for the column."""
+    if dialect == "postgresql":
+        return func.translate(col, _PG_FROM, _PG_TO)
+    return func.unaccent(col)
+
+
+def _search_filter(q: str, dialect: str):
+    """Build accent-insensitive search filter.
+
+    - `"frase com aspas"` → exact substring (accent-insensitive)
+    - multi-word → every word must match at least one field (AND)
+    """
+    q = q.strip()
+    cols = [getattr(models.RegulatoryAnalysis, f) for f in _SEARCH_FIELDS]
+
+    if q.startswith('"') and q.endswith('"') and len(q) >= 2:
+        phrase = _strip_accents(q[1:-1].strip())
+        if not phrase:
+            return None
+        return or_(*[_accent_expr(c, dialect).ilike(f"%{phrase}%") for c in cols])
+
+    words = [_strip_accents(w) for w in q.split() if w]
+    if not words:
+        return None
+    return and_(*[or_(*[_accent_expr(c, dialect).ilike(f"%{w}%") for c in cols]) for w in words])
 
 
 # ── List with search + filters + pagination ────────────────────────
@@ -44,19 +94,11 @@ def list_analyses(
 ):
     q_query = db.query(models.RegulatoryAnalysis)
 
-    # Full-text search
+    # Full-text search (accent-insensitive, multi-word, quoted phrase)
     if q:
-        pattern = f"%{q}%"
-        q_query = q_query.filter(
-            or_(
-                models.RegulatoryAnalysis.norma.ilike(pattern),
-                models.RegulatoryAnalysis.requisito.ilike(pattern),
-                models.RegulatoryAnalysis.item.ilike(pattern),
-                models.RegulatoryAnalysis.itens_modificados.ilike(pattern),
-                models.RegulatoryAnalysis.acao_sugerida.ilike(pattern),
-                models.RegulatoryAnalysis.source_name.ilike(pattern),
-            )
-        )
+        expr = _search_filter(q, db.get_bind().dialect.name)
+        if expr is not None:
+            q_query = q_query.filter(expr)
 
     # Enum filters
     if assunto:
@@ -299,6 +341,16 @@ def export_pdf(
     env = Environment(loader=FileSystemLoader(str(template_dir)))
     template = env.get_template("pdf_report.html")
 
+    # Logo Marmec embutido em base64 (WeasyPrint não resolve URLs do static)
+    logo_path = Path(__file__).parent.parent / "static" / "img" / "logo.png"
+    logo_data_uri = ""
+    if logo_path.is_file():
+        import base64
+
+        logo_data_uri = "data:image/png;base64," + base64.b64encode(logo_path.read_bytes()).decode(
+            "ascii"
+        )
+
     html_content = template.render(
         items=items,
         total=len(items),
@@ -307,6 +359,7 @@ def export_pdf(
         pending=pending,
         filters=filters,
         generated_at=datetime.now(UTC).strftime("%d/%m/%Y %H:%M UTC"),
+        logo_data_uri=logo_data_uri,
     )
 
     # Generate PDF

@@ -2,13 +2,13 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Relatório Regulatório — Seagems</title>
+    <title>Relatório Regulatório — Marmec</title>
     <style>
         @page {
             size: A4 landscape;
             margin: 1.5cm;
             @bottom-center {
-                content: "Seagems — Relatório Regulatório | Página " counter(page) " de " counter(pages);
+                content: "Marmec — Relatório Regulatório | Página " counter(page) " de " counter(pages);
                 font-size: 8pt;
                 color: #666;
             }
@@ -46,7 +46,10 @@
             <p style="font-size: 10pt; color: #666;">Monitoramento Automatizado de Normas Marítimas</p>
         </div>
         <div class="meta">
-            <p><strong>Seagems</strong></p>
+            {% if logo_data_uri %}
+            <img src="{{ logo_data_uri }}" alt="Marmec" style="height: 44px; margin-bottom: 6px;">
+            {% endif %}
+            <p><strong>Marmec</strong></p>
             <p>Gerado em: {{ generated_at }}</p>
             {% if filters %}
             <p>Filtros: {{ filters }}</p>
@@ -129,7 +132,7 @@
     </table>
 
     <div class="footer">
-        Seagems — Sistema de Monitoramento Regulatório Marítimo | Documento gerado automaticamente
+        Marmec — Sistema de Monitoramento Regulatório Marítimo | Documento gerado automaticamente
     </div>
 </body>
 </html>

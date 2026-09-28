@@ -1,6 +1,10 @@
 """API key authentication and rate limiting middleware."""
 
-from __future__ import annotations
+# NOTA: este módulo NÃO usa `from __future__ import annotations`.
+# As dependências aqui são instâncias (APIKeyAuth/RateLimiter) usadas via
+# Depends()/add_api_route; com anotações postergadas o FastAPI não resolve
+# `Request` (sem __globals__ na instância) e exige um query param fantasma
+# "request" → 422 em todas as rotas roteadas.
 
 import hashlib
 import time

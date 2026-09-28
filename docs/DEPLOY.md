@@ -170,7 +170,7 @@ sudo nano /etc/nginx/sites-available/regulatory
 ```nginx
 server {
     listen 80;
-    server_name regul.seagems.com;
+    server_name regul.marmec.com.br;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
@@ -199,7 +199,7 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ```bash
 sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d regul.seagems.com
+sudo certbot --nginx -d regul.marmec.com.br
 ```
 
 ---

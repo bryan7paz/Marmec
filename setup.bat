@@ -2,7 +2,7 @@
 chcp 65001 >nul
 echo.
 echo ═══════════════════════════════════════════════════
-echo   Seagems Regulatory Pipeline — Setup
+echo   Marmec Regulatory Pipeline — Setup
 echo ═══════════════════════════════════════════════════
 echo.
 
@@ -60,4 +60,5 @@ echo.
 echo   Para testar:
 echo     python -m pytest tests/ -v
 echo.
+if "%~1"=="/auto" exit /b 0
 pause

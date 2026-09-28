@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Seagems — Painel Regulatório</title>
+  <title>Marmec — Painel Regulatório</title>
+  <link rel="icon" href="/static/img/favicon.ico">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -21,6 +22,12 @@
     }
     .sidebar .brand { padding: 1.25rem 1rem; font-weight: 700; font-size: 1.05rem;
       color: #fff; border-bottom: 1px solid #2c2f36; }
+    .sidebar .brand .brand-logo {
+      display: block; max-height: 46px; width: auto; background: #fff;
+      border-radius: 8px; padding: 6px 8px; margin-bottom: .35rem;
+    }
+    .sidebar .brand .brand-sub { font-size: .72rem; font-weight: 400;
+      color: #909296; text-transform: uppercase; letter-spacing: .06em; }
     .sidebar .nav-link {
       color: #909296; padding: .6rem 1rem; font-size: .9rem;
       display: flex; align-items: center; gap: .6rem;
@@ -98,7 +105,8 @@
 <!-- ── Sidebar ───────────────────────────────────────── -->
 <nav class="sidebar" id="sidebar">
   <div class="brand">
-    <i class="bi bi-water me-2"></i>Seagems
+    <img src="/static/img/logo.png" alt="Marmec" class="brand-logo">
+    <span class="brand-sub">Painel Regulatório</span>
   </div>
   <ul class="nav flex-column mt-3">
     <li class="nav-item">
@@ -257,7 +265,7 @@
         <div class="row g-2 align-items-end">
           <div class="col-md-3">
             <input type="text" class="form-control form-control-sm" id="searchInput"
-                   placeholder="Buscar norma, requisito, ação..." onkeyup="debounceSearch()">
+                   placeholder="Buscar norma, requisito, ação... (aspas = frase exata)" onkeyup="debounceSearch()">
           </div>
           <div class="col-auto">
             <select class="form-select form-select-sm" id="filterAssunto" onchange="loadDocs(1)">
@@ -710,6 +718,7 @@ function loadDocs(page) {
   if (validacao) params.set('validacao', validacao);
   if (fonte) params.set('fonte', fonte);
 
+  window._hlq = q;  // remember query for highlight
   fetch('/regs/?' + params).then(r => r.json()).then(d => {
     renderDocs(d);
   }).catch(() => {
@@ -718,9 +727,54 @@ function loadDocs(page) {
   });
 }
 
+// ── Search highlight (accent + case-insensitive) ──────────────
+const _ACC_CLASS = {
+  a:'[aàáâãä]', e:'[eèéêë]', i:'[iìíîï]', o:'[oòóôõö]', u:'[uùúûü]', c:'[cç]', n:'[nñ]',
+  A:'[AÀÁÂÃÄ]', E:'[EÈÉÊË]', I:'[IÌÍÎÏ]', O:'[OÒÓÔÕÖ]', U:'[UÙÚÛÜ]', C:'[CÇ]', N:'[NÑ]'
+};
+function hl(text, q) {
+  const t = esc(text || '');
+  if (!q || !q.trim() || !text) return t;
+  const trimmed = q.trim();
+  const terms = /^".*"$/.test(trimmed)
+    ? [trimmed.slice(1, -1).trim()]
+    : trimmed.split(/\s+/).filter(Boolean);
+  const ranges = [];
+  for (const term of terms) {
+    if (!term) continue;
+    const pattern = term.split('').map(ch =>
+      _ACC_CLASS[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    ).join('');
+    let re;
+    try { re = new RegExp(pattern, 'gi'); } catch (e) { continue; }
+    let m;
+    while ((m = re.exec(t)) !== null) {
+      if (m[0]) ranges.push([m.index, m.index + m[0].length]);
+      if (m.index === re.lastIndex) re.lastIndex++;
+    }
+  }
+  if (!ranges.length) return t;
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  for (const r of ranges) {
+    if (merged.length && r[0] <= merged[merged.length - 1][1]) {
+      merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], r[1]);
+    } else {
+      merged.push([r[0], r[1]]);
+    }
+  }
+  let out = '', pos = 0;
+  for (const [s, e] of merged) {
+    out += t.slice(pos, s) + '<mark>' + t.slice(s, e) + '</mark>';
+    pos = e;
+  }
+  return out + t.slice(pos);
+}
+
 function renderDocs(d) {
   const items = d.items || [];
   const tbody = document.getElementById('docsBody');
+  const hq = window._hlq || '';
 
   if (!items.length) {
     tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Nenhum documento encontrado</td></tr>';
@@ -729,12 +783,12 @@ function renderDocs(d) {
       <tr>
         <td><input type="checkbox" class="doc-check" value="${esc(r.id)}"></td>
         <td class="text-nowrap small">${esc(r.data_publicacao || '—')}</td>
-        <td><span class="fw-semibold">${esc(r.norma || '—')}</span><br>
-          <small class="text-muted">${esc(r.requisito || '')}</small></td>
+        <td><span class="fw-semibold">${hl(r.norma || '—', hq)}</span><br>
+          <small class="text-muted">${hl(r.requisito, hq)}</small></td>
         <td><span class="badge badge-assunto bg-light text-dark border">${esc(r.assunto || '—')}</span></td>
         <td><span class="badge badge-aplicacao ${r.aplicacao==='D'?'bg-success':r.aplicacao==='I'?'bg-info':'bg-secondary'}">${esc(r.aplicacao || '—')}</span></td>
         <td><span class="badge ${r.status==='R'?'bg-warning text-dark':'bg-primary'}">${esc(r.status || '—')}</span></td>
-        <td class="small" style="max-width:250px">${esc(r.acao_sugerida || '—')}</td>
+        <td class="small" style="max-width:250px">${hl(r.acao_sugerida || '—', hq)}</td>
         <td>${validationBadge(r)}</td>
         <td>
           <div class="btn-group btn-group-sm">

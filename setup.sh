@@ -3,7 +3,7 @@ set -e
 
 echo ""
 echo "═══════════════════════════════════════════════════"
-echo "  Seagems Regulatory Pipeline — Setup"
+echo "  Marmec Regulatory Pipeline — Setup"
 echo "═══════════════════════════════════════════════════"
 echo ""
 

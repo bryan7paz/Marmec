@@ -11,9 +11,9 @@ class TestBuildPrompt:
         assert isinstance(result, tuple)
         assert len(result) == 2
 
-    def test_system_contains_seagems(self):
+    def test_system_contains_marmec(self):
         system, _ = build_prompt("doc")
-        assert "Seagems" in system
+        assert "Marmec" in system
 
     def test_system_contains_assunto_legend(self):
         system, _ = build_prompt("doc")
