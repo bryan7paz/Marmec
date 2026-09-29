@@ -32,6 +32,15 @@ class HtmlListSpider(BaseSpider):
         "update",
     ]
 
+    # Textos de navegação/chrome que nunca são documentos
+    BLACKLIST = [
+        "ir para",
+        "compartilhe",
+        "galeria de aplicativos",
+        "abrir menu",
+        "fechar menu",
+    ]
+
     async def fetch_items(self) -> list[Item]:
         from core.browser import get_browser
 
@@ -59,6 +68,8 @@ class HtmlListSpider(BaseSpider):
 
         for a in root.find_all("a", href=True):
             href = a["href"]
+            if href.startswith(("#", "javascript:", "mailto:")):
+                continue
             text = a.get_text(" ", strip=True) or ""
             full_url = urljoin(self.url, href)
 
@@ -83,6 +94,11 @@ class HtmlListSpider(BaseSpider):
 
     def _is_candidate(self, text: str, url: str) -> bool:
         lower = f"{text} {url}".lower()
+        if any(b in lower for b in self.BLACKLIST):
+            return False
+        if url.lower().endswith(".pdf") or "pdf" in url.lower():
+            return True
+        # HTML e demais: exige indício de documento (KEYWORDS) — links de
+        # navegação do portal (menus, busca, social) não entram na fila
         has_keyword = any(k in lower for k in self.KEYWORDS)
-        is_doc = url.lower().endswith((".pdf", ".html", ".htm")) or "pdf" in url.lower()
-        return is_doc or bool(has_keyword and len(text) > 5)
+        return bool(has_keyword and len(text) > 5)

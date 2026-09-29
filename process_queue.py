@@ -42,7 +42,13 @@ def process_queue() -> int:
             continue
         try:
             raw = pipeline.process_record(record)
+        except pipeline.DocumentoIgnoradoError as exc:
+            # Qualidade ruim (sem texto / sem norma): descarta da fila
+            logger.warning("Descartando %s: %s", record.get("title"), exc)
+            processed_hashes.append(sha)
+            continue
         except Exception as exc:
+            # Erro transitório (LLM/cota/IO): mantém na fila para retry
             logger.warning("Erro processando %s: %s", record.get("title"), exc)
             continue
 

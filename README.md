@@ -273,11 +273,23 @@ python process_queue.py
 
 **PDF:**
 1. Acesse: `http://127.0.0.1:8000/regs/export/pdf`
-2. O PDF é gerado com formatação profissional
+2. PDF profissional com logo Marmec e badges de classificação legíveis
 
 **Excel:**
 1. Acesse: `http://127.0.0.1:8000/regs/export/excel`
-2. A planilha inclui formatação e filtros
+2. Planilha com rótulos traduzidos, cores, filtros automáticos e
+   **aba Legenda** explicando cada código
+
+### 7. Agendador diário (opcional)
+
+Para rodar crawl + processamento automaticamente todo dia:
+
+```bash
+python crawler/scheduler.py
+```
+
+- Horário configurado em `SCHEDULE_HOUR` (padrão: 06:00)
+- Timezone em `SCHEDULE_TIMEZONE` (padrão: `America/Sao_Paulo`)
 
 ---
 
@@ -293,15 +305,16 @@ python process_queue.py
 
 ### Aba Documentos
 
-- **Busca**: Pesquisa por texto em norma, requisito, item
-- **Filtros**: Assunto, Aplicação, Status, Validação, Fonte
-- **Busca Avançada**:
-  - `date_from=2024-01-01` — Filtrar por data inicial
-  - `date_to=2024-12-31` — Filtrar por data final
-  - `sort_by=norma` — Ordenar por norma
-  - `sort_order=asc` — Crescente ou decrescente
-  - `fields=norma,assunto` — Selecionar campos específicos
-- **Ações**: Validar individual ou em lote, exportar
+- **Busca**: texto em norma, requisito, item, itens modificados, ação sugerida e fonte
+  - Use **aspas** para frase exata: `"condições análogas à escravidão"`
+- **Legenda de cores** no topo da lista (mesmas cores do Excel e do PDF)
+- **Filtros**: Assunto, Aplicação, Validação e Fonte
+- **Colunas**: Norma (fonte + data + título), Classificação (badges legíveis
+  `SEG · Segurança`, `I · Ação Indireta`, `N · Nova Versão`), Ação Sugerida
+  (fundo amarelo) e Validação
+- **Detalhe**: modal com seções — O que é, Classificação, O que muda,
+  Ação recomendada e JSON bruto
+- **Ações**: Validar individual ou em lote, exportar CSV
 
 ### Aba Pipeline
 
@@ -322,9 +335,9 @@ python process_queue.py
 
 ### Aba Configurações
 
-- **Chaves de API**: Cadastro de chaves dos provedores LLM
-- **Banco de Dados**: Configuração do PostgreSQL
-- **Scheduler**: Configuração do agendamento
+- **Chaves de API**: Cadastro de chaves dos provedores LLM (Gemini, NVIDIA)
+- **Banco de Dados**: `DATABASE_URL` (SQLite padrão, PostgreSQL opcional)
+- **Scheduler**: Configuração do agendamento diário (`SCHEDULE_HOUR`)
 - **IMODOCS**: Credenciais de acesso
 
 ---
@@ -560,7 +573,7 @@ regulatory-pipeline/
 │   ├── prompt.yaml             # Prompt com regras Marmec
 │   ├── llm.yaml                # Config multi-provedor LLM
 │   └── secrets.env.example     # Template de credenciais
-├── tests/                      # 163 testes unitários + 27 e2e
+├── tests/                      # 168 testes unitários + 27 e2e
 │   ├── test_config.py
 │   ├── test_schema.py
 │   ├── test_normalizer.py
@@ -578,7 +591,9 @@ regulatory-pipeline/
 │   ├── test_telemetry.py
 │   ├── test_process_queue.py
 │   ├── test_processor_pipeline.py
+│   ├── test_search.py
 │   └── e2e/                    # 27 testes end-to-end
+│       ├── conftest.py
 │       ├── test_dashboard.py
 │       ├── test_api.py
 │       └── test_pipeline.py
@@ -591,6 +606,8 @@ regulatory-pipeline/
 │   └── quality.yml             # Qualidade de código
 ├── run_pipeline.py             # Entry point: crawl + process
 ├── process_queue.py            # Entry point: só processar fila
+├── start.bat / start.sh        # Início em 1 clique (setup + servidor + navegador)
+├── setup.bat / setup.sh        # Setup manual (venv + dependências + Playwright)
 ├── requirements.txt            # Dependências com versionamento
 ├── pyproject.toml              # Config ruff, mypy, coverage
 ├── codecov.yml                 # Config Codecov

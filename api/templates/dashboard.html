@@ -73,8 +73,19 @@
     [data-bs-theme="dark"] .table-hover tbody tr:hover { background: #2c3040 !important; }
 
     /* ── Badges ──────────────────────────────────────── */
-    .badge-assunto { font-size: .72rem; font-weight: 600; }
-    .badge-aplicacao { font-size: .72rem; font-weight: 600; }
+    .badge-assunto, .badge-aplicacao, .badge-status { font-size: .72rem; font-weight: 600; }
+    .badge-class { display: block; width: fit-content; margin-bottom: .25rem; }
+    .badge-class:last-child { margin-bottom: 0; }
+    .fonte-badge { font-size: .7rem; letter-spacing: .02em; }
+
+    /* ── Ação sugerida (mesmo amarelo do Excel) ──────── */
+    .acao-cell { background: #FFF2CC; color: #5c4b13; }
+    [data-bs-theme="dark"] .acao-cell { background: #4a3d10; color: #ffe69c; }
+    .acao-box { background: #FFF2CC; color: #5c4b13; border-radius: .5rem; }
+    [data-bs-theme="dark"] .acao-box { background: #4a3d10; color: #ffe69c; }
+
+    /* ── Legenda de cores ────────────────────────────── */
+    .legenda-chip { font-size: .7rem; font-weight: 600; }
 
     /* ── Toast ───────────────────────────────────────── */
     .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 1100; }
@@ -325,6 +336,27 @@
       </div>
     </div>
 
+    <!-- Color Legend -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body py-2 d-flex flex-wrap gap-3 small align-items-center">
+        <span class="text-muted fw-semibold text-uppercase" style="font-size:.7rem">Legenda</span>
+        <span class="d-flex align-items-center gap-1"><span class="text-muted">Aplicação:</span>
+          <span class="badge legenda-chip" style="background:#C6EFCE;color:#006100">D · Ação Direta</span>
+          <span class="badge legenda-chip" style="background:#DDEBF7;color:#1F4E79">I · Ação Indireta</span>
+          <span class="badge legenda-chip" style="background:#E7E6E6;color:#595959">NP · Não Pertinente</span>
+        </span>
+        <span class="d-flex align-items-center gap-1"><span class="text-muted">Status:</span>
+          <span class="badge legenda-chip" style="background:#FFEB9C;color:#9C6500">R · Revisão</span>
+          <span class="badge legenda-chip" style="background:#BDD7EE;color:#1F4E79">N · Nova Versão</span>
+        </span>
+        <span class="d-flex align-items-center gap-1"><span class="text-muted">Validação:</span>
+          <span class="badge legenda-chip bg-warning text-dark">Pendente</span>
+          <span class="badge legenda-chip bg-success">Aprovado</span>
+          <span class="badge legenda-chip bg-danger">Reprovado</span>
+        </span>
+      </div>
+    </div>
+
     <!-- Table -->
     <div class="card border-0 shadow-sm">
       <div class="table-responsive">
@@ -332,18 +364,14 @@
           <thead class="table-light">
             <tr>
               <th width="30"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
-              <th>Data</th>
               <th>Norma</th>
-              <th>Assunto</th>
-              <th>Aplicação</th>
-              <th>Status</th>
-              <th>Ação Sugerida</th>
-              <th>Validação</th>
-              <th width="80">Ações</th>
+              <th width="180">Classificação</th>
+              <th width="30%">Ação Sugerida</th>
+              <th width="170">Validação</th>
             </tr>
           </thead>
           <tbody id="docsBody">
-            <tr><td colspan="9" class="text-center text-muted py-4">Carregando...</td></tr>
+            <tr><td colspan="5" class="text-center text-muted py-4">Carregando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -566,6 +594,36 @@ const ASSUNTO_LABELS = {SEG:'Segurança',INC:'Incêndio',COM:'Comunicação',NAV
 const ASSUNTO_COLORS = {SEG:'#339af0',INC:'#ff6b6b',COM:'#fcc419',NAV:'#51cf66',
   CON:'#cc5de8',TRI:'#20c997',AMB:'#22b8cf',NAU:'#f06595',IMO:'#868e96'};
 const APP_COLORS = {D:'#51cf66',I:'#339af0',NP:'#868e96'};
+const APLICACAO_LABELS = {D:'Ação Direta', I:'Ação Indireta', NP:'Não Pertinente'};
+const STATUS_LABELS = {R:'Revisão', N:'Nova Versão'};
+// Cores = mesmas do Excel/Para consistência entre exportações
+const APPL_BADGE = {D:'background:#C6EFCE;color:#006100', I:'background:#DDEBF7;color:#1F4E79',
+  NP:'background:#E7E6E6;color:#595959'};
+const STATUS_BADGE = {R:'background:#FFEB9C;color:#9C6500', N:'background:#BDD7EE;color:#1F4E79'};
+const ASSUNTO_BADGE = 'background:#F8F9FA;color:#495057;border:1px solid #DEE2E6';
+
+function classBadges(r) {
+  const parts = [];
+  if (r.assunto) {
+    const label = ASSUNTO_LABELS[r.assunto] || r.assunto;
+    parts.push(`<span class="badge badge-class" style="${ASSUNTO_BADGE}">${esc(r.assunto)} · ${esc(label)}</span>`);
+  }
+  if (r.aplicacao) {
+    const label = APLICACAO_LABELS[r.aplicacao] || r.aplicacao;
+    parts.push(`<span class="badge badge-class" style="${APPL_BADGE[r.aplicacao] || ''}">${esc(r.aplicacao)} · ${esc(label)}</span>`);
+  }
+  if (r.status) {
+    const label = STATUS_LABELS[r.status] || r.status;
+    parts.push(`<span class="badge badge-class" style="${STATUS_BADGE[r.status] || ''}">${esc(r.status)} · ${esc(label)}</span>`);
+  }
+  return parts.length ? parts.join('') : '<span class="text-muted">—</span>';
+}
+
+function acaoLabel(r) {
+  if (r.acao_sugerida) return r.acao_sugerida;
+  if (r.aplicacao === 'NP') return '— (não pertinente: sem ação necessária)';
+  return '— (sem ação registrada)';
+}
 
 function toast(msg, type='success') {
   const el = document.createElement('div');
@@ -691,7 +749,7 @@ function loadDocs(page) {
     renderDocs(d);
   }).catch(() => {
     document.getElementById('docsBody').innerHTML =
-      '<tr><td colspan="9" class="text-center text-danger py-3">Erro ao carregar</td></tr>';
+      '<tr><td colspan="5" class="text-center text-danger py-3">Erro ao carregar</td></tr>';
   });
 }
 
@@ -745,31 +803,36 @@ function renderDocs(d) {
   const hq = window._hlq || '';
 
   if (!items.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Nenhum documento encontrado</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhum documento encontrado</td></tr>';
   } else {
     tbody.innerHTML = items.map(r => `
       <tr>
         <td><input type="checkbox" class="doc-check" value="${esc(r.id)}"></td>
-        <td class="text-nowrap small">${esc(r.data_publicacao || '—')}</td>
-        <td><span class="fw-semibold">${hl(r.norma || '—', hq)}</span><br>
-          <small class="text-muted">${hl(r.requisito, hq)}</small></td>
-        <td><span class="badge badge-assunto bg-light text-dark border">${esc(r.assunto || '—')}</span></td>
-        <td><span class="badge badge-aplicacao ${r.aplicacao==='D'?'bg-success':r.aplicacao==='I'?'bg-info':'bg-secondary'}">${esc(r.aplicacao || '—')}</span></td>
-        <td><span class="badge ${r.status==='R'?'bg-warning text-dark':'bg-primary'}">${esc(r.status || '—')}</span></td>
-        <td class="small" style="max-width:250px">${hl(r.acao_sugerida || '—', hq)}</td>
-        <td>${validationBadge(r)}</td>
         <td>
-          <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-primary" onclick="showDetail('${esc(r.id)}')" title="Detalhe">
-              <i class="bi bi-eye"></i>
-            </button>
-            ${r.status_validacao === 'pendente' ? `
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge bg-light text-dark border fonte-badge">${esc(r.source_name || r.source_id || '—')}</span>
+            <small class="text-muted">${esc(r.data_publicacao || '—')}</small>
+          </div>
+          <span class="fw-semibold">${hl(r.norma || '—', hq)}</span><br>
+          <small class="text-muted">${hl(r.requisito, hq)}</small>
+        </td>
+        <td>${classBadges(r)}</td>
+        <td class="small acao-cell">${hl(acaoLabel(r), hq)}</td>
+        <td>
+          <div class="d-flex align-items-center justify-content-between gap-1">
+            ${validationBadge(r)}
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-primary" onclick="showDetail('${esc(r.id)}')" title="Detalhe">
+                <i class="bi bi-eye"></i>
+              </button>
+              ${r.status_validacao === 'pendente' ? `
               <button class="btn btn-outline-success" onclick="validateOne('${esc(r.id)}','aprovado')" title="Aprovar">
                 <i class="bi bi-check-lg"></i>
               </button>
               <button class="btn btn-outline-danger" onclick="validateOne('${esc(r.id)}','reprovado')" title="Reprovar">
                 <i class="bi bi-x-lg"></i>
               </button>` : ''}
+            </div>
           </div>
         </td>
       </tr>
@@ -834,25 +897,55 @@ function showDetail(id) {
     document.getElementById('detailTitle').textContent = r.norma || r.id;
     let rawJson = '';
     try { rawJson = JSON.stringify(JSON.parse(r.raw_json || '{}'), null, 2); } catch { rawJson = r.raw_json || '—'; }
+
+    const chip = (code, labels, styleMap) => {
+      if (!code) return '';
+      const label = labels[code] ? `${code} · ${labels[code]}` : code;
+      return `<span class="badge" style="font-size:.8rem;padding:.4em .7em;${styleMap ? styleMap[code] || '' : ''}">${esc(label)}</span>`;
+    };
+    const assuntoChip = r.assunto
+      ? `<span class="badge" style="font-size:.8rem;padding:.4em .7em;${ASSUNTO_BADGE}">${esc(r.assunto)} · ${esc(ASSUNTO_LABELS[r.assunto] || '')}</span>` : '';
+
     document.getElementById('detailBody').innerHTML = `
-      <div class="row g-3">
-        <div class="col-md-6"><strong>Fonte:</strong> ${esc(r.source_name || r.source_id)}</div>
-        <div class="col-md-6"><strong>Publicação:</strong> ${esc(r.data_publicacao || '—')}</div>
-        <div class="col-md-6"><strong>Vigor:</strong> ${esc(r.entrada_em_vigor || '—')}</div>
-        <div class="col-md-6"><strong>Requisito:</strong> ${esc(r.requisito || '—')}</div>
-        <div class="col-12"><strong>Norma:</strong> ${esc(r.norma || '—')}</div>
-        <div class="col-md-3"><strong>Assunto:</strong> ${esc(r.assunto)}</div>
-        <div class="col-md-3"><strong>Aplicação:</strong> ${esc(r.aplicacao)}</div>
-        <div class="col-md-3"><strong>Status:</strong> ${esc(r.status)}</div>
-        <div class="col-md-3"><strong>Validação:</strong> ${esc(r.status_validacao)}</div>
-        <div class="col-12"><strong>Item:</strong> ${esc(r.item || '—')}</div>
-        <div class="col-12"><strong>Itens Modificados:</strong> ${esc(r.itens_modificados || '—')}</div>
-        <div class="col-12"><strong>Ação Sugerida:</strong> ${esc(r.acao_sugerida || '—')}</div>
-        <div class="col-12"><strong>URL:</strong> <a href="${esc(r.url_origem)}" target="_blank">${esc(r.url_origem || '—')}</a></div>
+      <div class="mb-3 p-3 border rounded">
+        <div class="text-uppercase text-muted fw-bold small mb-2">O que é</div>
+        <div class="fw-semibold fs-6 mb-2">${esc(r.norma || '—')}</div>
+        <div class="row g-2 small">
+          <div class="col-md-4"><span class="text-muted">Fonte:</span>
+            <span class="badge bg-light text-dark border">${esc(r.source_name || r.source_id || '—')}</span></div>
+          <div class="col-md-4"><span class="text-muted">Publicação:</span> ${esc(r.data_publicacao || '—')}</div>
+          <div class="col-md-4"><span class="text-muted">Entrada em vigor:</span> ${esc(r.entrada_em_vigor || '—')}</div>
+          <div class="col-12"><span class="text-muted">Requisito:</span> ${esc(r.requisito || '—')}</div>
+          <div class="col-12"><span class="text-muted">Documento:</span>
+            <a href="${esc(r.url_origem)}" target="_blank">abrir na fonte <i class="bi bi-box-arrow-up-right"></i></a></div>
+        </div>
       </div>
-      <hr>
-      <h6>JSON Bruto</h6>
-      <pre class="bg-dark text-light p-3 rounded" style="font-size:.75rem; max-height:300px; overflow:auto">${esc(rawJson)}</pre>
+
+      <div class="mb-3 p-3 border rounded">
+        <div class="text-uppercase text-muted fw-bold small mb-2">Classificação</div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          ${assuntoChip}
+          ${chip(r.aplicacao, APLICACAO_LABELS, APPL_BADGE)}
+          ${chip(r.status, STATUS_LABELS, STATUS_BADGE)}
+          ${validationBadge(r)}
+        </div>
+      </div>
+
+      <div class="mb-3 p-3 border rounded">
+        <div class="text-uppercase text-muted fw-bold small mb-2">O que muda</div>
+        ${r.item ? `<div class="small mb-1"><strong>Item:</strong> ${esc(r.item)}</div>` : ''}
+        <div class="small">${esc(r.itens_modificados || '— (sem alterações registradas)')}</div>
+      </div>
+
+      <div class="mb-3 p-3 acao-box">
+        <div class="text-uppercase fw-bold small mb-2" style="opacity:.75">Ação recomendada</div>
+        <div class="fw-semibold">${esc(acaoLabel(r))}</div>
+      </div>
+
+      <details>
+        <summary class="text-muted small" style="cursor:pointer">JSON bruto da análise</summary>
+        <pre class="bg-dark text-light p-3 rounded mt-2" style="font-size:.75rem; max-height:300px; overflow:auto">${esc(rawJson)}</pre>
+      </details>
     `;
   });
 }
