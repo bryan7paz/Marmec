@@ -1,21 +1,26 @@
-playwright>=1.40,<2
-pymupdf>=1.24,<2
-beautifulsoup4>=4.12,<5
-google-generativeai>=0.8,<1
-openai>=1.50,<2
-pydantic>=2.5,<3
-pyyaml>=6.0,<7
-fastapi>=0.110,<1
-uvicorn[standard]>=0.27,<1
-sqlalchemy>=2.0,<3
-psycopg2-binary>=2.9,<3
-jinja2>=3.1,<4
-httpx>=0.27,<1
-pytest>=8.0,<9
-alembic>=1.13,<2
-openpyxl>=3.1,<4
+# Versões travadas — garantem compatibilidade no CI e estabilidade.
+# Atualizar apenas após testar em ambiente isolado (venv).
+# Opcionais: descomentar/ajustar conforme nova necessidade.
 
-# Opcionais (instale só se precisar — deixam o ambiente mais leve):
-# weasyprint==60.0                         # Export PDF (exige GTK/Pango no sistema)
-# opentelemetry-sdk + exporter-otlp        # tracing completo (OTEL_ENABLED=true)
-#                                          # obs: opentelemetry-api já vem com o fastapi
+playwright==1.63.0              # navegadores (revisão 1243)
+pymupdf==1.28.2                # extração de texto em PDF
+beautifulsoup4==4.15.0         # parsing HTML/HTML
+google-generativeai==0.8.6     # Gemini (a api.generativeai.before)
+openai==1.109.1                # provedor NVIDIA/OpenAI
+pydantic==2.13.5               # validação de dados
+pyyaml==6.0.3                  # config/YAML
+fastapi==0.142.2               # API web (requiere opentelemetry-api)
+uvicorn[standard]==0.54.0      # servidor ASGI
+sqlalchemy==2.1.3              # ORM/BD (SQLite/Postgres)
+psycopg2-binary==2.9.13        # driver Postgres (SQLite no uso corrente)
+jinja2==3.1.6                  # templates HTML
+httpx==0.28.1                  # cliente HTTP HTTP/2
+pytest>=8.0,<9                 # testes (compatível com 8.4.2)
+alembic==1.20.0                # migrações de BD
+openpyxl==3.1.5                # planilhas Excel
+opentelemetry-api==1.45.1      # requisitado pelo fastapi (tracing opcional)
+# opcional: descomentar se precisar de tracing ativo
+# opentelemetry-sdk
+# opentelemetry-exporter-otlp
+# python-multipart>=0.0.6      # apenas se houver endpoints Form/File
+# weasyprint==60.0             # Export PDF (exige GTK/Pango no sistema; sem elas o /regs/export/pdf retorna 503 com aviso)
