@@ -132,7 +132,7 @@
     </li>
     <li class="nav-item">
       <a class="nav-link" href="#" onclick="showSection('pipeline')">
-        <i class="bi bi-gear-wide-connected"></i> Pipeline
+        <i class="bi bi-search"></i> Nova An&aacute;lise
       </a>
     </li>
     <li class="nav-item">
@@ -171,8 +171,8 @@
     </div>
     <div class="d-flex align-items-center gap-2">
       <span class="text-muted small" id="dbStatus"></span>
-      <button class="btn btn-sm btn-primary" onclick="runPipeline()" id="btnRun">
-        <i class="bi bi-play-fill"></i> Rodar Pipeline
+      <button class="btn btn-sm btn-primary" onclick="gotoSection('pipeline')" id="btnRun">
+        <i class="bi bi-search"></i> Nova An&aacute;lise
       </button>
     </div>
   </div>
@@ -311,13 +311,15 @@
           <div class="col-auto">
             <select class="form-select form-select-sm" id="filterFonte" onchange="loadDocs(1)">
               <option value="">Fonte</option>
-              <option value="iacs">IACS</option>
-              <option value="imca">IMCA</option>
-              <option value="mte">MTE</option>
-              <option value="panama">Panama</option>
-              <option value="imodocs">IMODOCS</option>
-              <option value="dpc">DPC</option>
             </select>
+          </div>
+          <div class="col-auto">
+            <input type="date" class="form-control form-control-sm" id="filterDateFrom"
+                   title="Publicado a partir de" onchange="loadDocs(1)">
+          </div>
+          <div class="col-auto">
+            <input type="date" class="form-control form-control-sm" id="filterDateTo"
+                   title="Publicado até" onchange="loadDocs(1)">
           </div>
           <div class="col-auto ms-auto">
             <div class="btn-group btn-group-sm">
@@ -392,15 +394,37 @@
       <div class="col-md-8">
         <div class="card border-0 shadow-sm">
           <div class="card-body">
-            <h6>Controle do Pipeline</h6>
-            <p class="text-muted small">Execute o pipeline completo (crawl + process + persist) ou apenas processe a fila.</p>
-            <div class="d-flex gap-2 mb-3">
-              <button class="btn btn-primary" onclick="runPipeline()" id="btnRun2">
-                <i class="bi bi-play-fill"></i> Rodar Pipeline Completo
-              </button>
-              <button class="btn btn-outline-primary" onclick="processQueue()" id="btnProcess">
-                <i class="bi bi-cpu"></i> Processar Fila
-              </button>
+            <h6><i class="bi bi-link-45deg me-1"></i>Analisar um link</h6>
+            <p class="text-muted small mb-3">
+              Cole a p&aacute;gina de normas (ex.: lista da IACS, MTE, circular do Panama) e, se quiser,
+              informe o per&iacute;odo. O sistema baixa os links encontrados, descarta os que est&atilde;o
+              fora do per&iacute;odo <strong>antes</strong> de analisar com a IA e mostra tudo em Documentos.
+            </p>
+            <div class="mb-3">
+              <label class="form-label small mb-1" for="analyzeUrl">Link da p&aacute;gina com normas</label>
+              <input type="url" class="form-control" id="analyzeUrl"
+                     placeholder="https://www.iacs.org.uk/..." list="recentUrls">
+              <datalist id="recentUrls"></datalist>
+            </div>
+            <div class="row g-2 align-items-end mb-3">
+              <div class="col-auto">
+                <label class="form-label small mb-1" for="analyzeFrom">Per&iacute;odo de</label>
+                <input type="date" class="form-control" id="analyzeFrom">
+              </div>
+              <div class="col-auto">
+                <label class="form-label small mb-1" for="analyzeTo">at&eacute;</label>
+                <input type="date" class="form-control" id="analyzeTo">
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-primary" onclick="runPipeline()" id="btnRun2">
+                  <i class="bi bi-search"></i> Analisar
+                </button>
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-outline-secondary" onclick="processQueue()" id="btnProcess">
+                  <i class="bi bi-cpu"></i> Processar fila
+                </button>
+              </div>
             </div>
             <div class="progress mb-2" style="height:8px" id="pipelineProgress2">
               <div class="progress-bar progress-bar-animated bg-primary" id="pipelineBar2" style="width:0%"></div>
@@ -526,23 +550,6 @@
               </button>
             </form>
             <hr>
-            <h6><i class="bi bi-calendar me-2"></i>Scheduler</h6>
-            <form onsubmit="saveSettings(event)">
-              <div class="row g-2 mb-3">
-                <div class="col-6">
-                  <label class="form-label small fw-semibold">Hora</label>
-                  <input type="number" class="form-control form-control-sm" id="cfg-SCHEDULE_HOUR" min="0" max="23" value="06">
-                </div>
-                <div class="col-6">
-                  <label class="form-label small fw-semibold">Fuso</label>
-                  <input type="text" class="form-control form-control-sm" id="cfg-SCHEDULE_TIMEZONE" value="America/Sao_Paulo">
-                </div>
-              </div>
-              <button type="submit" class="btn btn-outline-primary btn-sm">
-                <i class="bi bi-save"></i> Salvar
-              </button>
-            </form>
-            <hr>
             <h6><i class="bi bi-box-arrow-in-right me-2"></i>IMODOCS (opcional)</h6>
             <form onsubmit="saveSettings(event)">
               <div class="mb-2">
@@ -658,12 +665,17 @@ function toggleSidebar() {
 }
 
 // ── Sections ───────────────────────────────────────────────────
+function gotoSection(name) {
+  const link = document.querySelector(`.sidebar .nav-link[onclick*="${name}"]`);
+  if (link) link.click();
+}
+
 function showSection(name) {
   document.querySelectorAll('[id^="sec-"]').forEach(s => s.style.display = 'none');
   document.getElementById('sec-' + name).style.display = '';
   document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
   event.currentTarget.classList.add('active');
-  const titles = {dashboard:'Dashboard',documents:'Documentos',pipeline:'Pipeline',queue:'Fila',providers:'Provedores IA',settings:'Configurações'};
+  const titles = {dashboard:'Dashboard',documents:'Documentos',pipeline:'Nova Análise',queue:'Fila',providers:'Provedores IA',settings:'Configurações'};
   document.getElementById('pageTitle').textContent = titles[name] || name;
   if (name === 'documents') loadDocs(1);
   if (name === 'queue') loadQueue();
@@ -736,6 +748,8 @@ function loadDocs(page) {
   const aplicacao = document.getElementById('filterAplicacao').value;
   const validacao = document.getElementById('filterValidacao').value;
   const fonte = document.getElementById('filterFonte').value;
+  const dateFrom = document.getElementById('filterDateFrom').value;
+  const dateTo = document.getElementById('filterDateTo').value;
 
   const params = new URLSearchParams({ page: currentDocPage, size: 15 });
   if (q) params.set('q', q);
@@ -743,6 +757,8 @@ function loadDocs(page) {
   if (aplicacao) params.set('aplicacao', aplicacao);
   if (validacao) params.set('validacao', validacao);
   if (fonte) params.set('fonte', fonte);
+  if (dateFrom) params.set('date_from', dateFrom);
+  if (dateTo) params.set('date_to', dateTo);
 
   window._hlq = q;  // remember query for highlight
   fetch('/regs/?' + params).then(r => r.json()).then(d => {
@@ -751,6 +767,17 @@ function loadDocs(page) {
     document.getElementById('docsBody').innerHTML =
       '<tr><td colspan="5" class="text-center text-danger py-3">Erro ao carregar</td></tr>';
   });
+}
+
+function loadFontes() {
+  fetch('/regs/sources').then(r => r.json()).then(list => {
+    const sel = document.getElementById('filterFonte');
+    if (!sel || !Array.isArray(list)) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Fonte</option>' +
+      list.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+    sel.value = current;
+  }).catch(() => {});
 }
 
 // ── Search highlight (accent + case-insensitive) ──────────────
@@ -954,10 +981,43 @@ function showDetail(id) {
 let sseSource;
 
 function runPipeline() {
-  fetch('/pipeline/run', { method: 'POST' }).then(r => r.json()).then(d => {
-    if (d.ok) { toast('Pipeline iniciado'); startSSE(); }
+  const url = document.getElementById('analyzeUrl').value.trim();
+  const dateFrom = document.getElementById('analyzeFrom').value;
+  const dateTo = document.getElementById('analyzeTo').value;
+
+  if (!url) { toast('Cole o link da p\u00e1gina com normas', 'warning'); return; }
+  if (!/^https?:\/\//i.test(url)) { toast('O link deve come\u00e7ar com http:// ou https://', 'warning'); return; }
+  if (dateFrom && dateTo && dateFrom > dateTo) { toast('Per\u00edodo inv\u00e1lido: "de" \u00e9 posterior a "at\u00e9"', 'warning'); return; }
+
+  rememberUrl(url);
+
+  fetch('/pipeline/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, date_from: dateFrom || null, date_to: dateTo || null })
+  }).then(r => r.json()).then(d => {
+    if (d.ok) { toast(d.message || 'An\u00e1lise iniciada'); startSSE(); }
     else toast(d.error || 'Erro', 'warning');
-  }).catch(() => toast('Erro ao iniciar pipeline', 'danger'));
+  }).catch(() => toast('Erro ao iniciar an\u00e1lise', 'danger'));
+}
+
+function rememberUrl(url) {
+  try {
+    const list = JSON.parse(localStorage.getItem('recentUrls') || '[]')
+      .filter(u => u !== url);
+    list.unshift(url);
+    localStorage.setItem('recentUrls', JSON.stringify(list.slice(0, 8)));
+    renderRecentUrls();
+  } catch (e) { /* localStorage indispon\u00edvel */ }
+}
+
+function renderRecentUrls() {
+  const dl = document.getElementById('recentUrls');
+  if (!dl) return;
+  try {
+    dl.innerHTML = JSON.parse(localStorage.getItem('recentUrls') || '[]')
+      .map(u => `<option value="${esc(u)}">`).join('');
+  } catch (e) { /* ignore */ }
 }
 
 function processQueue() {
@@ -1004,7 +1064,17 @@ function startSSE() {
     if (line) { log.textContent += line; log.scrollTop = log.scrollHeight; }
     if (log2 && line) { log2.textContent += line; log2.scrollTop = log2.scrollHeight; }
 
-    if (!s.running && sseSource) { sseSource.close(); sseSource = null; loadMetrics(); }
+    if (!s.running && sseSource) {
+      sseSource.close(); sseSource = null; loadMetrics();
+      if (s.last_run_ok) {
+        const n = s.docs_persisted || 0;
+        toast(n > 0
+          ? `${n} documento(s) analisado(s) — clique em Documentos para ver`
+          : 'Análise concluída — nenhum documento novo (confira o período)', 'success');
+      } else if ((s.errors || []).length) {
+        toast('Análise falhou: ' + s.errors[0], 'danger');
+      }
+    }
   };
   sseSource.onerror = () => { sseSource.close(); sseSource = null; };
 }
@@ -1024,7 +1094,7 @@ function loadQueue() {
   fetch('/pipeline/status').then(r => r.json()).then(s => {
     document.getElementById('queueList').innerHTML =
       `<p class="mb-2"><strong>${s.queue_size}</strong> item(ns) na fila</p>` +
-      (s.queue_size > 0 ? '<p class="small text-muted">Execute o pipeline para processar.</p>' :
+      (s.queue_size > 0 ? '<p class="small text-muted">Use <strong>Processar fila</strong> em Nova An&aacute;lise para analisar.</p>' :
        '<p class="text-success"><i class="bi bi-check-circle"></i> Fila vazia</p>');
   });
 }
@@ -1117,6 +1187,8 @@ document.addEventListener('DOMContentLoaded', () => {
   checkHealth();
   loadMetrics();
   refreshPipelineStatus();
+  renderRecentUrls();
+  loadFontes();
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

@@ -1,4 +1,4 @@
-"""Pipeline control endpoints: run, status, SSE stream."""
+"""Pipeline control endpoints: analyze a URL, process queue, SSE stream."""
 
 from __future__ import annotations
 
@@ -6,31 +6,68 @@ import json
 import threading
 import time
 from collections.abc import AsyncGenerator
+from datetime import date
 from pathlib import Path
+from urllib.parse import urlparse
 
 from core.config import logger
 from core.pipeline_state import pipeline_state
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
 
-def _run_pipeline_background() -> None:
-    """Execute crawl + process in a background thread, updating state."""
+class AnalyzeRequest(BaseModel):
+    """Body for POST /pipeline/run — analyze documents found at a URL."""
+
+    url: str
+    date_from: str | None = None
+    date_to: str | None = None
+
+
+def _validate(body: AnalyzeRequest) -> str | None:
+    """Return an error message, or None when the request is valid."""
+    parsed = urlparse(body.url.strip())
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return "URL inválida — cole um link começando com http:// ou https://"
+    try:
+        df = date.fromisoformat(body.date_from) if body.date_from else None
+        dt = date.fromisoformat(body.date_to) if body.date_to else None
+    except ValueError:
+        return "Período inválido — use o formato AAAA-MM-DD"
+    if df and dt and df > dt:
+        return "Período inválido: data inicial é posterior à final"
+    return None
+
+
+def _analyze_background(body: AnalyzeRequest) -> None:
+    """Execute crawl (one URL, period-filtered) + process in a background thread."""
     from core.notify import notify_new_documents, notify_pipeline_complete, notify_pipeline_error
 
     pipeline_state.start()
     start_time = time.time()
 
     try:
-        # ── Crawl ──────────────────────────────────────────────────
-        pipeline_state.update(step="crawling", current="Iniciando crawler...")
+        df = date.fromisoformat(body.date_from) if body.date_from else None
+        dt = date.fromisoformat(body.date_to) if body.date_to else None
+
+        pipeline_state.update(step="crawling", current=f"Analisando {body.url} ...")
         import asyncio as _asyncio
 
-        from crawler.runner import run_all
+        from core.browser import close_pool
+        from crawler.runner import run_source, source_from_url
 
-        records = _asyncio.run(run_all())
+        source = source_from_url(body.url.strip())
+
+        async def _crawl() -> list[dict]:
+            try:
+                return await run_source(source, df, dt)
+            finally:
+                await close_pool()
+
+        records = _asyncio.run(_crawl())
 
         pipeline_state.update(
             step="crawling_done",
@@ -65,7 +102,7 @@ def _run_pipeline_background() -> None:
         )
 
     except Exception as exc:
-        logger.error("Pipeline falhou: %s", exc)
+        logger.error("Análise falhou: %s", exc)
         pipeline_state.add_error(str(exc))
         pipeline_state.finish(ok=False)
         notify_pipeline_error(str(exc))
@@ -109,14 +146,18 @@ def _process_only() -> None:
 
 
 @router.post("/run")
-def run_pipeline():
-    """Trigger a full pipeline run (crawl + process) in the background."""
+def run_pipeline(body: AnalyzeRequest):
+    """Analyze documents found at a URL (optionally period-filtered)."""
+    error = _validate(body)
+    if error:
+        return {"ok": False, "error": error}
+
     if pipeline_state.running:
         return {"ok": False, "error": "Pipeline já está em execução"}
 
-    thread = threading.Thread(target=_run_pipeline_background, daemon=True)
+    thread = threading.Thread(target=_analyze_background, args=(body,), daemon=True)
     thread.start()
-    return {"ok": True, "message": "Pipeline completo iniciado"}
+    return {"ok": True, "message": "Análise iniciada"}
 
 
 @router.post("/process")
@@ -226,8 +267,6 @@ SENSITIVE_KEYS = {
 }
 SAFE_KEYS = {
     "DATABASE_URL",
-    "SCHEDULE_HOUR",
-    "SCHEDULE_TIMEZONE",
     "IMODOCS_USER",
 }
 

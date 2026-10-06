@@ -2,25 +2,7 @@
 
 from __future__ import annotations
 
-from core.config import load_prompt, load_sources, validate_env
-
-
-class TestLoadSources:
-    def test_returns_list(self):
-        sources = load_sources()
-        assert isinstance(sources, list)
-
-    def test_has_ids(self):
-        sources = load_sources()
-        ids = {s["id"] for s in sources}
-        assert "panama" in ids
-        assert "imodocs" in ids
-
-    def test_imodocs_has_auth(self):
-        sources = load_sources()
-        imodocs = next(s for s in sources if s["id"] == "imodocs")
-        assert "auth" in imodocs
-        assert imodocs["type"] == "login"
+from core.config import load_prompt, validate_env
 
 
 class TestLoadPrompt:

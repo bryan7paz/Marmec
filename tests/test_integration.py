@@ -52,6 +52,18 @@ class TestSpiderRegistry:
         spider = get_spider(source)
         assert type(spider).__name__ == "ImodocsAdapter"
 
+    def test_imodocs_detected_by_pasted_url(self):
+        from crawler.spiders.registry import get_spider
+
+        # URL colada pelo usuário (id = domínio, sem auth block)
+        source = {
+            "id": "docs.imo.org",
+            "type": "html_list",
+            "url": "https://docs.imo.org/en/Search",
+        }
+        spider = get_spider(source)
+        assert type(spider).__name__ == "ImodocsAdapter"
+
     def test_unknown_type_falls_back_to_html_list(self):
         from crawler.spiders.registry import get_spider
 
@@ -216,15 +228,6 @@ class TestLLMProviders:
 
 
 class TestConfig:
-    def test_load_sources(self):
-        from core.config import load_sources
-
-        sources = load_sources()
-        assert len(sources) == 6
-        ids = {s["id"] for s in sources}
-        assert "imodocs" in ids
-        assert "iacs" in ids
-
     def test_load_llm_config(self):
         import yaml
         from core.config import CONFIG_DIR

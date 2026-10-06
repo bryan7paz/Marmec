@@ -38,7 +38,7 @@ app = FastAPI(
 Automatiza o monitoramento de normas regulatórias internacionais para operadores de tubulação submarina.
 
 ### Funcionalidades
-- **Crawler**: Monitora 6 fontes regulatórias (IACS, IMCA, MTE, Panama, IMO, DPC)
+- **Crawler**: Analisa links colados em Nova Análise (período antes da IA)
 - **Processor**: Analisa documentos via LLM (Gemini, NVIDIA)
 - **Dashboard**: Visualiza, valida e exporta análises regulatórias
 - **Export**: CSV, PDF formatado, Excel com formatação profissional

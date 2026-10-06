@@ -263,6 +263,25 @@ def batch_validate(body: BatchValidationRequest, db: Session = Depends(get_db)):
     return {"updated": updated}
 
 
+# ── Distinct sources (for the dynamic "Fonte" filter) ─────────────
+
+
+@router.get("/sources")
+def list_sources(db: Session = Depends(get_db)):
+    """Return distinct source_id/source_name present in the database."""
+    rows = (
+        db.query(
+            models.RegulatoryAnalysis.source_id,
+            models.RegulatoryAnalysis.source_name,
+        )
+        .filter(models.RegulatoryAnalysis.source_id.isnot(None))
+        .distinct()
+        .order_by(models.RegulatoryAnalysis.source_id)
+        .all()
+    )
+    return [{"id": sid, "name": name or sid} for sid, name in rows if sid]
+
+
 # ── Single detail ──────────────────────────────────────────────────
 
 

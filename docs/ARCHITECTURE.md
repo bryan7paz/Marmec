@@ -29,17 +29,16 @@ O **Regulatory Pipeline** é um sistema automatizado de monitoramento regulatór
 
 ### 1. Crawler Phase
 ```
-Fontes Regulatórias (6 fontes)
-    │
-    ├─ IACS (html_list)
-    ├─ IMCA (html_list)
-    ├─ MTE (html_list)
-    ├─ Panama Maritime (html_list)
-    ├─ IMO IMODOCS (login)  ← adapter customizado
-    └─ DPC (html_list)
+URL colada em Nova Análise (+ período opcional)
     │
     ▼
-Spider → Download → SHA-256 Dedup → queue.jsonl
+HtmlListSpider (página genérica)          ImodocsAdapter (docs.imo.org, login)
+    │                                          │
+    ├─ extrai links + datas visíveis           │
+    ├─ filtro de período ANTES do download     │
+    │   (sem data → mantido)                   │
+    ▼                                          ▼
+Download → SHA-256 Dedup → queue.jsonl
 ```
 
 ### 2. Processor Phase

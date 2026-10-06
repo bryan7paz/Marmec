@@ -77,3 +77,40 @@ class TestHtmlListSpider:
         """
         items = spider._extract_links(html)
         assert len(items) == 1
+
+    # ── Date extraction ────────────────────────────────────────────
+
+    def _dates(self, html: str) -> list[str | None]:
+        spider = self._make_spider()
+        return [i.published_date for i in spider._extract_links(html)]
+
+    def test_date_from_anchor_text_iso(self):
+        html = '<a href="/n.pdf">Norma 001 de 2024-05-15</a>'
+        assert self._dates(html) == ["2024-05-15"]
+
+    def test_date_from_anchor_text_br(self):
+        html = '<a href="/n.pdf">Circular 001 de 15/05/2024</a>'
+        assert self._dates(html) == ["2024-05-15"]
+
+    def test_date_from_context_row(self):
+        html = """
+        <tr><td><a href="/n.pdf">Marine Notice 003</a></td>
+            <td>10 May 2023</td></tr>
+        """
+        assert self._dates(html) == ["2023-05-10"]
+
+    def test_date_from_context_pt_month(self):
+        html = '<li><a href="/n.pdf">Norma 9</a> publicada em 3 de março de 2024</li>'
+        assert self._dates(html) == ["2024-03-03"]
+
+    def test_date_from_url_path(self):
+        html = '<a href="/2024/07/norma.pdf">Resolution 002</a>'
+        assert self._dates(html) == ["2024-07-01"]
+
+    def test_no_date_returns_none(self):
+        html = '<a href="/n.pdf">Circular 004 sem data</a>'
+        assert self._dates(html) == [None]
+
+    def test_invalid_date_returns_none(self):
+        html = '<a href="/n.pdf">Circular 32/13/2024</a>'
+        assert self._dates(html) == [None]

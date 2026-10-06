@@ -167,10 +167,35 @@ class TestFilters:
 
 
 class TestPipelineEndpoints:
-    def test_start(self, client):
+    def test_run_rejects_missing_body(self, client):
         resp = client.post("/pipeline/run")
+        assert resp.status_code == 422  # FastAPI body validation
+
+    def test_run_rejects_bad_url(self, client):
+        resp = client.post("/pipeline/run", json={"url": "ftp://not-http"})
         assert resp.status_code == 200
-        assert "message" in resp.json()
+        assert resp.json()["ok"] is False
+        assert "URL" in resp.json()["error"]
+
+    def test_run_rejects_bad_period(self, client):
+        resp = client.post(
+            "/pipeline/run",
+            json={"url": "https://example.com/", "date_from": "2024-13-99"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is False
+
+    def test_run_rejects_inverted_period(self, client):
+        resp = client.post(
+            "/pipeline/run",
+            json={
+                "url": "https://example.com/",
+                "date_from": "2024-12-31",
+                "date_to": "2024-01-01",
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is False
 
     def test_stop(self, client):
         resp = client.post("/pipeline/stop")

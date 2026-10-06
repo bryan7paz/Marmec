@@ -2,7 +2,7 @@
 
 Pipeline automatizado de monitoramento regulatório marítimo para a **Marmec** (engenharia, consultoria e treinamento — controle regulatório em Brasil e Panamá).
 
-Crawl de 6 fontes regulatórias → Extração de texto → Análise via LLM → Dashboard de validação humana.
+Análise sob demanda de links regulatórios (colar URL + período) → Extração de texto → Análise via LLM → Dashboard de validação humana.
 
 ---
 
@@ -13,8 +13,8 @@ O sistema monitora automaticamente fontes regulatórias internacionais de embarc
 **Fluxo completo:**
 
 ```
-Fontes Regulatórias → Crawler → Download → Queue → LLM → Normalização → Dashboard
-     (6 fontes)    (Playwright)  (PDF/HTML)  (.jsonl)  (Gemini/NVIDIA)  (Pydantic)   (Validação)
+Link colado + período → Crawler → Download → Queue → LLM → Normalização → Dashboard
+   (Nova Análise)   (Playwright) (PDF/HTML) (.jsonl) (Gemini/NVIDIA) (Pydantic)  (Validação)
 ```
 
 ---
@@ -195,22 +195,23 @@ Ou pelo dashboard: **Provedores IA** → clique em **Ativar** no provedor deseja
 
 ---
 
-### Fontes Regulatórias
+### Fontes (busca por link)
 
-As 6 fontes estão configuradas em `config/sources.yaml`:
+Não há fontes fixas: você cola qualquer página de normas em **Nova Análise**
+e o sistema extrai os links daquela página. O campo **Fonte** de cada
+documento passa a ser o domínio analisado (ex.: `iacs.org.uk`, `mte` para
+registros antigos).
 
-| Fonte | Tipo | Descrição |
-|---|---|---|
-| IACS | html_list | International Association of Classification Societies |
-| IMCA | html_list | International Marine Contractors Association |
-| MTE | html_list | Ministério do Trabalho e Emprego (Brasil) |
-| Panama Maritime | html_list | Panama Maritime Authority |
-| IMODOCS | login | IMO Documents (requer login) |
-| DPC | html_list | Diretoria de Portos e Costas (Marinha) |
+Funciona com páginas genéricas de listagem (IACS, IMCA, MTE, Panama, DPC,
+portais de circulares, etc.). O filtro de período (de/até) é aplicado
+**antes** da análise com IA: links com data visível fora do período são
+descartados; links sem data visível entram mesmo assim (a página não mostra
+a data — o log informa quantos foram mantidos por esse motivo).
 
-#### IMODOCS (opcional)
+#### IMODOCS (login automático)
 
-Para ativar o crawl do IMODOCS, configure o login em `config/secrets.env`:
+Se o link colado for de `docs.imo.org`, o sistema faz login automaticamente
+com as credenciais em `config/secrets.env`:
 
 ```env
 IMODOCS_USER=seu_usuario
@@ -241,18 +242,22 @@ Abra o navegador em: **http://127.0.0.1:8000**
 4. Clique em **Provedores IA** no menu lateral
 5. Clique em **Ativar** no provedor desejado
 
-### 4. Rodar o pipeline
+### 4. Analisar um link
 
 **Pelo Dashboard:**
-1. Clique em **Pipeline** no menu lateral
-2. Clique em **Rodar Pipeline Completo** (crawl + processamento)
-3. Acompanhe o progresso em tempo real via SSE
+1. Clique em **Nova Análise** no menu lateral
+2. Cole o link da página com normas (ex.: `https://www.iacs.org.uk/`)
+3. Opcionalmente informe o **período** (de/até) — links fora do período são
+   descartados antes da análise com IA
+4. Clique em **Analisar** e acompanhe o progresso em tempo real via SSE
+5. Ao terminar, abra **Documentos** para ver o resultado
 
 **Pelo Terminal:**
 
 ```bash
-# Pipeline completo (crawl + process + persist)
-python run_pipeline.py
+# Analisar um link (crawl + process + persist)
+python run_pipeline.py https://www.iacs.org.uk/
+python run_pipeline.py https://www.iacs.org.uk/ 2024-01-01 2024-12-31
 
 # Só processar fila (documentos já baixados)
 python process_queue.py
@@ -280,17 +285,6 @@ python process_queue.py
 2. Planilha com rótulos traduzidos, cores, filtros automáticos e
    **aba Legenda** explicando cada código
 
-### 7. Agendador diário (opcional)
-
-Para rodar crawl + processamento automaticamente todo dia:
-
-```bash
-python crawler/scheduler.py
-```
-
-- Horário configurado em `SCHEDULE_HOUR` (padrão: 06:00)
-- Timezone em `SCHEDULE_TIMEZONE` (padrão: `America/Sao_Paulo`)
-
 ---
 
 ## Dashboard
@@ -308,7 +302,8 @@ python crawler/scheduler.py
 - **Busca**: texto em norma, requisito, item, itens modificados, ação sugerida e fonte
   - Use **aspas** para frase exata: `"condições análogas à escravidão"`
 - **Legenda de cores** no topo da lista (mesmas cores do Excel e do PDF)
-- **Filtros**: Assunto, Aplicação, Validação e Fonte
+- **Filtros**: Assunto, Aplicação, Validação, Fonte (domínios reais do banco)
+  e período de publicação (de/até)
 - **Colunas**: Norma (fonte + data + título), Classificação (badges legíveis
   `SEG · Segurança`, `I · Ação Indireta`, `N · Nova Versão`), Ação Sugerida
   (fundo amarelo) e Validação
@@ -316,12 +311,13 @@ python crawler/scheduler.py
   Ação recomendada e JSON bruto
 - **Ações**: Validar individual ou em lote, exportar CSV
 
-### Aba Pipeline
+### Aba Nova Análise
 
-- **Status**: Se o pipeline está rodando
-- **Controles**: Rodar pipeline completo ou só processar
-- **Progresso**: Etapa atual, documentos processados
-- **Log**: Mensagens em tempo real via SSE
+- **Link**: campo para colar a página de normas (histórico local das últimas URLs)
+- **Período (de/até)**: filtra os links **antes** da análise com IA
+- **Analisar**: dispara crawl + download + LLM + persistência
+- **Processar fila**: reprocessa documentos já baixados
+- **Status/Progresso/Log**: atualização em tempo real via SSE
 
 ### Aba Fila
 
@@ -337,7 +333,6 @@ python crawler/scheduler.py
 
 - **Chaves de API**: Cadastro de chaves dos provedores LLM (Gemini, NVIDIA)
 - **Banco de Dados**: `DATABASE_URL` (SQLite padrão, PostgreSQL opcional)
-- **Scheduler**: Configuração do agendamento diário (`SCHEDULE_HOUR`)
 - **IMODOCS**: Credenciais de acesso
 
 ---
@@ -360,8 +355,9 @@ python crawler/scheduler.py
 | `GET` | `/regs/export/pdf` | Download PDF formatado |
 | `GET` | `/regs/export/excel` | Download Excel (.xlsx) |
 | `GET` | `/dashboard/metrics` | KPIs e dados para gráficos |
-| `POST` | `/pipeline/run` | Rodar pipeline completo |
+| `POST` | `/pipeline/run` | Analisar um link `{url, date_from, date_to}` |
 | `POST` | `/pipeline/process` | Só processar fila |
+| `GET` | `/regs/sources` | Fontes distintas (filtro dinâmico) |
 | `GET` | `/pipeline/status` | Estado do pipeline |
 | `GET` | `/pipeline/stream` | SSE com progresso em tempo real |
 | `GET` | `/pipeline/providers` | Listar provedores LLM |
@@ -431,10 +427,12 @@ curl -X POST http://127.0.0.1:8000/regs/batch-validate \
   -d '{"ids": ["id1", "id2"], "action": "aprovado", "validated_by": "especialista"}'
 ```
 
-#### Rodar pipeline completo
+#### Analisar um link
 
 ```bash
-curl -X POST http://127.0.0.1:8000/pipeline/run
+curl -X POST http://127.0.0.1:8000/pipeline/run \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.iacs.org.uk/", "date_from": "2024-01-01", "date_to": "2024-12-31"}'
 ```
 
 #### Só processar fila
@@ -487,8 +485,11 @@ resp = httpx.post(
 )
 print(resp.json())
 
-# Rodar pipeline
-resp = httpx.post(f"{BASE}/pipeline/run")
+# Analisar um link
+resp = httpx.post(
+    f"{BASE}/pipeline/run",
+    json={"url": "https://www.iacs.org.uk/", "date_from": "2024-01-01", "date_to": "2024-12-31"},
+)
 print(resp.json())
 ```
 
@@ -527,7 +528,7 @@ docker compose down
 ```
 regulatory-pipeline/
 ├── core/                       # Config compartilhado
-│   ├── config.py               # Env vars, logging, load_sources, load_prompt
+│   ├── config.py               # Env vars, logging, load_prompt
 │   ├── browser.py              # Pool compartilhado de Playwright
 │   ├── pipeline_state.py       # Estado global do pipeline (thread-safe)
 │   ├── llm_providers.py        # Gateway multi-provedor LLM
@@ -537,9 +538,8 @@ regulatory-pipeline/
 │   ├── runner.py               # Orquestração: crawl → download → enqueue
 │   ├── downloader.py           # Download com retry
 │   ├── storage.py              # State files + queue.jsonl (dedup por hash)
-│   ├── scheduler.py            # APScheduler (cron diário)
-│   └── spiders/                # Spiders por tipo de fonte
-│       ├── html_list.py        # Genérico (IACS, IMCA, MTE, Panama, DPC)
+│   └── spiders/                # Spiders por tipo de página
+│       ├── html_list.py        # Genérico: links + datas (período)
 │       ├── login.py            # Login automático (IMODOCS)
 │       ├── pdf_list.py         # Só links PDF
 │       ├── sitemap.py          # Sitemap/RSS
@@ -569,11 +569,10 @@ regulatory-pipeline/
 │       ├── pdf_report.html     # Template PDF para export
 │       └── index.html          # Dashboard legado
 ├── config/
-│   ├── sources.yaml            # 6 fontes configuradas
 │   ├── prompt.yaml             # Prompt com regras Marmec
 │   ├── llm.yaml                # Config multi-provedor LLM
 │   └── secrets.env.example     # Template de credenciais
-├── tests/                      # 168 testes unitários + 27 e2e
+├── tests/                      # 189 testes unitários + 27 e2e
 │   ├── test_config.py
 │   ├── test_schema.py
 │   ├── test_normalizer.py
@@ -591,6 +590,7 @@ regulatory-pipeline/
 │   ├── test_telemetry.py
 │   ├── test_process_queue.py
 │   ├── test_processor_pipeline.py
+│   ├── test_runner.py
 │   ├── test_search.py
 │   └── e2e/                    # 27 testes end-to-end
 │       ├── conftest.py
@@ -604,7 +604,7 @@ regulatory-pipeline/
 ├── .github/workflows/          # CI/CD
 │   ├── ci.yml                  # Testes + lint + security
 │   └── quality.yml             # Qualidade de código
-├── run_pipeline.py             # Entry point: crawl + process
+├── run_pipeline.py             # Entry point: analisar URL (+ período)
 ├── process_queue.py            # Entry point: só processar fila
 ├── start.bat / start.sh        # Início em 1 clique (setup + servidor + navegador)
 ├── setup.bat / setup.sh        # Setup manual (venv + dependências + Playwright)
@@ -778,7 +778,7 @@ make test-cov    # Testes com coverage
 make lint        # Verificar lint
 make format      # Formatar código
 make run         # Iniciar dashboard
-make crawl       # Rodar pipeline completo
+make crawl       # Analisar uma URL (URL=<url>)
 make process     # Processar fila
 make docker-up   # Iniciar com Docker
 make docker-down # Parar Docker

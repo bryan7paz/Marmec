@@ -21,10 +21,6 @@ def _load_yaml(name: str) -> dict[str, Any]:
         return yaml.safe_load(fh) or {}
 
 
-def load_sources() -> list[dict[str, Any]]:
-    return _load_yaml("sources.yaml").get("sources", [])
-
-
 def load_prompt() -> dict[str, Any]:
     return _load_yaml("prompt.yaml")
 

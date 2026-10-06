@@ -24,8 +24,8 @@ format:  ## Auto-format code
 run:  ## Start dashboard (port 8000)
 	python -m uvicorn api.main:app --port 8000 --reload
 
-crawl:  ## Run full pipeline (crawl + process)
-	python run_pipeline.py
+crawl:  ## Analyze a URL (URL=<url> [FROM=AAAA-MM-DD TO=AAAA-MM-DD])
+	python run_pipeline.py $(URL) $(FROM) $(TO)
 
 process:  ## Process queue only
 	python process_queue.py

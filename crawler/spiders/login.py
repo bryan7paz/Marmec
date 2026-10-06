@@ -1,7 +1,8 @@
 """Login-based spider for portals that require authentication (e.g. IMODOCS).
 
-Uses Playwright to log in with credentials from the environment (defined in
-``sources.yaml`` ``auth`` block), then extracts document links from the page.
+Uses Playwright to log in with credentials from the environment (``auth``
+block in the source dict, e.g. ``IMODOCS_USER``/``IMODOCS_PASSWORD`` in
+``config/secrets.env``), then extracts document links from the page.
 """
 
 from __future__ import annotations

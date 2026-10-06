@@ -50,8 +50,8 @@ IMODOCS_PASSWORD=sua_senha
 # Dashboard (port 8000)
 python -m uvicorn api.main:app --port 8000 --reload
 
-# Pipeline completo (crawl + process)
-python run_pipeline.py
+# Analisar um link (crawl + process)
+python run_pipeline.py https://www.iacs.org.uk/ 2024-01-01 2024-12-31
 
 # Processar fila apenas
 python process_queue.py
@@ -212,8 +212,8 @@ crontab -e
 ```
 
 ```cron
-# Crawl diário às 06:00
-0 6 * * * cd /opt/regulatory-pipeline && .venv/bin/python run_pipeline.py >> /var/log/regulatory.log 2>&1
+# Re-análise diária de um link às 06:00
+0 6 * * * cd /opt/regulatory-pipeline && .venv/bin/python run_pipeline.py https://www.iacs.org.uk/ >> /var/log/regulatory.log 2>&1
 ```
 
 ---
@@ -270,4 +270,4 @@ O sistema faz fallback automático para o próximo provedor. Verifique `config/l
 ### IMODOCS login falha
 1. Verifique credenciais em `config/secrets.env`
 2. Teste manualmente no navegador
-3. Verifique seletores em `config/sources.yaml`
+3. Teste a URL em **Nova Análise** — o IMODOCS é detectado pelo domínio (`docs.imo.org`)

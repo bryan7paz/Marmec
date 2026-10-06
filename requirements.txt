@@ -1,5 +1,4 @@
 playwright>=1.40,<2
-apscheduler>=3.10,<4
 pymupdf>=1.24,<2
 beautifulsoup4>=4.12,<5
 google-generativeai>=0.8,<1
