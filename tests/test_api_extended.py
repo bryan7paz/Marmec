@@ -137,11 +137,14 @@ class TestExportExcel:
 class TestExportPDF:
     def test_pdf_empty(self, client):
         resp = client.get("/regs/export/pdf")
-        assert resp.status_code in (200, 500)
+        # 503 = weasyprint/GTK opcionais ausentes; 200 = deps instaladas
+        assert resp.status_code in (200, 503)
+        if resp.status_code == 503:
+            assert "GTK" in resp.json()["detail"]
 
     def test_pdf_filtered(self, client):
         resp = client.get("/regs/export/pdf?validacao=aprovado")
-        assert resp.status_code in (200, 500)
+        assert resp.status_code in (200, 503)
 
 
 class TestFilters:

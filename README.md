@@ -295,7 +295,7 @@ python process_queue.py
    separador `;` e rótulos traduzidos (`SEG — Segurança`, `Pendente`...)
 3. Respeita os filtros ativos de **Validação** e **Fonte**
 
-**PDF:**
+**PDF:** *(opcional — requer `pip install weasyprint` + bibliotecas GTK/Pango do sistema; sem elas o endpoint retorna 503 com aviso)*
 1. Acesse: `http://127.0.0.1:8000/regs/export/pdf`
 2. PDF profissional com logo Marmec e badges de classificação legíveis
 
@@ -596,7 +596,7 @@ regulatory-pipeline/
 │   ├── prompt.yaml             # Prompt com regras Marmec
 │   ├── llm.yaml                # Config multi-provedor LLM
 │   └── secrets.env.example     # Template de credenciais
-├── tests/                      # 202 testes unitários + 27 e2e
+├── tests/                      # 203 testes unitários + 27 e2e
 │   ├── test_config.py
 │   ├── test_schema.py
 │   ├── test_normalizer.py

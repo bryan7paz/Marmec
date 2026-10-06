@@ -336,7 +336,14 @@ def export_pdf(
     from pathlib import Path
 
     from jinja2 import Environment, FileSystemLoader
-    from weasyprint import HTML
+
+    try:
+        from weasyprint import HTML
+    except (ImportError, OSError) as exc:  # deps opcionais: pip install weasyprint + GTK/Pango
+        raise HTTPException(
+            status_code=503,
+            detail="Export PDF indisponível: requer weasyprint e as bibliotecas GTK/Pango do sistema",
+        ) from exc
 
     q = db.query(models.RegulatoryAnalysis)
     if validacao:

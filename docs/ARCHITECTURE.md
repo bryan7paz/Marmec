@@ -83,7 +83,7 @@ Módulo compartilhado com configurações e utilitários.
 | Arquivo | Responsabilidade |
 |---------|------------------|
 | `config.py` | Loading de YAML, env vars, logging |
-| `browser.py` | Pool de browsers Playwright |
+| `browser.py` | Pool de browsers Playwright (fecha sozinho após ociosidade) |
 | `pipeline_state.py` | Singleton thread-safe para estado |
 | `llm_providers.py` | Gateway multi-provedor com fallback |
 | `notify.py` | Sistema de notificações |
@@ -183,7 +183,8 @@ O pipeline usa Server-Sent Events para atualizar o dashboard em tempo real.
 
 ## Performance
 
-- **Playwright pool**: Browser reutilizado entre requests
+- **Playwright pool**: Browser reutilizado entre requests e fechado após
+  `BROWSER_IDLE_TIMEOUT` s sem uso (padrão 300) para liberar RAM; reabre no próximo uso
 - **Connection pooling**: SQLAlchemy pool para PostgreSQL
 - **WAL mode**: SQLite com Write-Ahead Logging para concorrência
 - **Background threads**: Pipeline roda em thread separada
