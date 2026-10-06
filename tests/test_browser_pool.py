@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
 from core import browser
+from playwright.async_api import Error as PlaywrightError
 
 
 def test_browser_idle_close(monkeypatch):
@@ -12,8 +14,14 @@ def test_browser_idle_close(monkeypatch):
     monkeypatch.setenv("BROWSER_IDLE_TIMEOUT", "0.4")
 
     async def scenario():
-        async with browser.get_browser() as page:
-            assert page is not None
+        try:
+            async with browser.get_browser() as page:
+                assert page is not None
+        except PlaywrightError as exc:
+            if "doesn't exist" in str(exc) or "playwright install" in str(exc):
+                await browser._shutdown()
+                return "skip"
+            raise
         await asyncio.sleep(1.0)
         assert browser._browser is None, "browser deveria ter fechado por inatividade"
 
@@ -21,5 +29,8 @@ def test_browser_idle_close(monkeypatch):
         async with browser.get_browser() as page2:
             assert page2 is not None
         await browser.close_pool()
+        return "ok"
 
-    asyncio.run(scenario())
+    resultado = asyncio.run(scenario())
+    if resultado == "skip":
+        pytest.skip("navegadores Playwright nao instalados (playwright install chromium)")
