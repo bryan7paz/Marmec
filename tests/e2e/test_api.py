@@ -94,9 +94,9 @@ class TestRegsAPI:
         assert "spreadsheet" in response.headers.get("content-type", "")
 
     def test_export_pdf(self, api_url):
-        """GET /regs/export/pdf returns PDF (or 500 if weasyprint missing)."""
+        """GET /regs/export/pdf returns PDF (503 if weasyprint/GTK optional deps missing)."""
         response = httpx.get(f"{api_url}/regs/export/pdf", timeout=30)
-        assert response.status_code in (200, 500)
+        assert response.status_code in (200, 503)
 
 
 class TestPipelineAPI:
