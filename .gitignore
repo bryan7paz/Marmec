@@ -14,6 +14,7 @@ config/secrets.env
 # Dados gerados em runtime
 data/
 crawler/state/
+dist/
 *.log
 *.db
 

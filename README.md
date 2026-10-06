@@ -131,6 +131,22 @@ python -m uvicorn api.main:app --port 8000 --reload
 
 Não precisa de configuração. O sistema cria automaticamente em `data/regulatory.db`.
 
+#### Estrutura da pasta `data/`
+
+```
+data/
+├── downloads/          ← PDFs/HTML baixados com nome legível
+│   └── <fonte>/        ← VOCÊ PODE APAGAR À VONTADE (ou pelo botão em Configurações)
+├── regulatory.db       ← banco de dados (NÃO apagar)
+├── queue.jsonl         ← fila de processamento
+├── logs/               ← notificações
+└── backup_*.json       ← backups
+```
+
+Os downloads são gravados como `data/downloads/<fonte>/<Título do documento> [hash8].pdf`
+(nomes inválidos removidos, máx. 80 caracteres). O texto é extraído na hora do
+processamento — apagar os arquivos depois não afeta nada, a análise já fica no banco.
+
 #### PostgreSQL (produção)
 
 1. Criar banco e usuário:
@@ -275,6 +291,9 @@ python process_queue.py
 
 **CSV:**
 1. Na aba **Documentos**, clique em **Export CSV**
+2. Formato pronto para o Excel pt-BR: UTF-8 com BOM (acentos corretos),
+   separador `;` e rótulos traduzidos (`SEG — Segurança`, `Pendente`...)
+3. Respeita os filtros ativos de **Validação** e **Fonte**
 
 **PDF:**
 1. Acesse: `http://127.0.0.1:8000/regs/export/pdf`
@@ -334,6 +353,8 @@ python process_queue.py
 - **Chaves de API**: Cadastro de chaves dos provedores LLM (Gemini, NVIDIA)
 - **Banco de Dados**: `DATABASE_URL` (SQLite padrão, PostgreSQL opcional)
 - **IMODOCS**: Credenciais de acesso
+- **Downloads**: Quantidade/tamanho dos documentos baixados + botão
+  **Limpar downloads** (apaga `data/downloads/`; bloqueia se houver fila pendente)
 
 ---
 
@@ -366,6 +387,8 @@ python process_queue.py
 | `POST` | `/pipeline/settings` | Salvar configurações |
 | `GET` | `/pipeline/notifications` | Histórico de notificações |
 | `POST` | `/pipeline/notifications/clear` | Limpar notificações |
+| `GET` | `/pipeline/downloads` | Tamanho da pasta de downloads |
+| `POST` | `/pipeline/clear-downloads` | Apagar downloads (bloqueia com fila pendente) |
 
 ### Exemplos com curl
 
@@ -537,7 +560,8 @@ regulatory-pipeline/
 ├── crawler/                    # Módulo de crawl
 │   ├── runner.py               # Orquestração: crawl → download → enqueue
 │   ├── downloader.py           # Download com retry
-│   ├── storage.py              # State files + queue.jsonl (dedup por hash)
+│   ├── storage.py              # Nome legível de downloads + fila (dedup hash)
+│   ├── migrate.py              # Migra downloads antigos p/ pasta downloads/
 │   └── spiders/                # Spiders por tipo de página
 │       ├── html_list.py        # Genérico: links + datas (período)
 │       ├── login.py            # Login automático (IMODOCS)
@@ -572,13 +596,14 @@ regulatory-pipeline/
 │   ├── prompt.yaml             # Prompt com regras Marmec
 │   ├── llm.yaml                # Config multi-provedor LLM
 │   └── secrets.env.example     # Template de credenciais
-├── tests/                      # 189 testes unitários + 27 e2e
+├── tests/                      # 202 testes unitários + 27 e2e
 │   ├── test_config.py
 │   ├── test_schema.py
 │   ├── test_normalizer.py
 │   ├── test_prompt.py
 │   ├── test_persistence.py
 │   ├── test_html_list.py
+│   ├── test_downloads.py
 │   ├── test_integration.py
 │   ├── test_schemas_api.py
 │   ├── test_middleware.py
@@ -693,6 +718,35 @@ ruff format .
 # Verificar formatação (sem alterar)
 ruff format --check .
 ```
+
+---
+
+## Gerar release (para o usuário final)
+
+O usuário final **não precisa dos testes** nem dos arquivos de desenvolvimento.
+Gere um zip limpo:
+
+```powershell
+# Nome com hash do commit
+.\build_release.ps1
+
+# Nome personalizado
+.\build_release.ps1 -Nome v1
+```
+
+Saída: `dist/regulatory-pipeline-<hash>.zip`.
+
+O script empacota o que está no commit (`git archive`) e **exclui** `tests/`,
+`.github/`, `pyproject.toml`, `.pre-commit-config.yaml` e `codecov.yml`.
+Depois valida o pacote e **falha** se vazar algo sensível:
+`config/secrets.env`, `data/`, `crawler/state/` ou `__pycache__/`.
+
+Para o usuário final, basta:
+
+1. Descompactar o zip
+2. `pip install -r requirements.txt`
+3. `start.bat` (ou `python -m uvicorn api.main:app --port 8000`)
+4. Abrir <http://127.0.0.1:8000> e colocar a chave de IA em **Configurações**
 
 ---
 

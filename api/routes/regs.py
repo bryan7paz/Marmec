@@ -7,7 +7,7 @@ import io
 import unicodedata
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import and_, func, or_
@@ -167,32 +167,36 @@ def list_analyses(
 @router.get("/export/csv")
 def export_csv(
     validacao: str | None = None,
+    fonte: str | None = None,
     db: Session = Depends(get_db),
 ):
+    """CSV legível no Excel pt-BR: BOM UTF-8 (acentos), ';' (separador local) e rótulos PT-BR."""
     q = db.query(models.RegulatoryAnalysis)
     if validacao:
         q = q.filter(models.RegulatoryAnalysis.status_validacao == validacao)
+    if fonte:
+        q = q.filter(models.RegulatoryAnalysis.source_id == fonte)
     rows = q.order_by(models.RegulatoryAnalysis.created_at.desc()).all()
 
     buf = io.StringIO()
-    writer = csv.writer(buf)
+    writer = csv.writer(buf, delimiter=";", lineterminator="\r\n")
     writer.writerow(
         [
-            "id",
-            "fonte",
-            "data_publicacao",
-            "entrada_em_vigor",
-            "requisito",
-            "norma",
-            "assunto",
-            "aplicacao",
-            "status",
-            "item",
-            "itens_modificados",
-            "acao_sugerida",
-            "validacao",
-            "validado_por",
-            "url_origem",
+            "ID",
+            "Fonte",
+            "Data Publicação",
+            "Entrada em Vigor",
+            "Requisito",
+            "Norma",
+            "Assunto",
+            "Aplicação",
+            "Status",
+            "Item",
+            "Itens Modificados",
+            "Ação Sugerida",
+            "Validação",
+            "Validado por",
+            "URL Origem",
         ]
     )
     for r in rows:
@@ -204,23 +208,24 @@ def export_csv(
                 r.entrada_em_vigor.isoformat() if r.entrada_em_vigor else "",
                 r.requisito or "",
                 r.norma or "",
-                r.assunto or "",
-                r.aplicacao or "",
-                r.status or "",
+                ASSUNTO_LABELS.get(r.assunto, r.assunto or ""),
+                APLICACAO_LABELS.get(r.aplicacao, r.aplicacao or ""),
+                STATUS_LABELS.get(r.status, r.status or ""),
                 r.item or "",
                 r.itens_modificados or "",
                 r.acao_sugerida or "",
-                r.status_validacao or "",
+                VALIDACAO_LABELS.get(r.status_validacao, r.status_validacao or ""),
                 r.validated_by or "",
                 r.url_origem or "",
             ]
         )
 
-    buf.seek(0)
-    return StreamingResponse(
-        iter([buf.getvalue()]),
+    return Response(
+        content=buf.getvalue().encode("utf-8-sig"),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=regulatory_analysis.csv"},
+        headers={
+            "Content-Disposition": 'attachment; filename="regulamentacoes.csv"',
+        },
     )
 
 

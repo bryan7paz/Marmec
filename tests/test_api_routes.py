@@ -72,6 +72,24 @@ class TestRegsExport:
         resp = client.get("/regs/export/csv?validacao=aprovado")
         assert resp.status_code == 200
 
+    def test_export_csv_excel_ptbr(self, client):
+        """CSV deve abrir direto no Excel pt-BR: BOM UTF-8, ';' e colunas alinhadas."""
+        import csv as _csv
+        import io as _io
+
+        resp = client.get("/regs/export/csv")
+        raw = resp.content
+        assert raw[:3] == b"\xef\xbb\xbf", "falta BOM UTF-8 (Excel quebra acentos)"
+        texto = raw.decode("utf-8-sig")
+        rows = list(_csv.reader(_io.StringIO(texto), delimiter=";"))
+        assert rows, "CSV sem linhas"
+        assert "Data Publicação" in rows[0]
+        assert "Validação" in rows[0]
+        n_cols = len(rows[0])
+        assert n_cols == 15
+        for r in rows:
+            assert len(r) == n_cols, "linha com número de colunas diferente do cabeçalho"
+
 
 class TestDashboardMetrics:
     def test_metrics_returns_200(self, client):

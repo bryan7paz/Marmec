@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from core.config import load_env, logger, validate_env
@@ -29,6 +31,20 @@ Base.metadata.create_all(bind=engine)
 # ── observability ───────────────────────────────────────────────────
 setup_telemetry()
 
+
+# ── lifespan ────────────────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Migra downloads antigos (data/<fonte>/<hash>.pdf) para
+    # data/downloads/<fonte>/<Título legível> [hash8].pdf — idempotente.
+    # Sob pytest não roda: a suíte não deve mexer nos dados reais.
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        from crawler.migrate import migrate_downloads
+
+        migrate_downloads()
+    yield
+
+
 # ── app ─────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Regulatory Pipeline — Marmec",
@@ -55,6 +71,7 @@ Automatiza o monitoramento de normas regulatórias internacionais para operadore
     license_info={"name": "Proprietário"},
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # ── static assets (logo, favicon) ──────────────────────────────────

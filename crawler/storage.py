@@ -1,15 +1,22 @@
-"""Local persistence for crawler state and the pending download queue."""
+"""Local persistence for crawler state, downloads and the pending queue."""
 
 from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 BASE_DIR = Path(__file__).resolve().parent
 STATE_DIR = BASE_DIR / "state"
 DATA_DIR = BASE_DIR.parent / "data"
+DOWNLOADS_SUBDIR = "downloads"
+
+# Caracteres inválidos em nomes de arquivo (Windows) + controle
+_INVALID = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
+_MAX_NAME = 80
 
 
 def _ensure_dirs() -> None:
@@ -43,6 +50,32 @@ def item_hash(item: dict[str, Any]) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def sanitize_filename(title: str = "", url: str = "", ext: str = ".pdf") -> str:
+    """Build a readable, filesystem-safe name (without the hash suffix).
+
+    Order: cleaned title -> last meaningful URL segment -> "documento".
+    """
+    name = _INVALID.sub(" ", title or "")
+    name = re.sub(r"\s+", " ", name).strip(" .")
+    if not name:
+        path = unquote(urlparse(url or "").path).rstrip("/")
+        name = Path(path).stem if path else ""
+        name = _INVALID.sub(" ", name)
+        name = re.sub(r"\s+", " ", name).strip(" .")
+    if not name:
+        name = "documento"
+    if len(name) > _MAX_NAME:
+        name = name[:_MAX_NAME].rstrip(" .")
+    if not name.lower().endswith(ext.lower()):
+        name += ext
+    return name
+
+
+def download_dir(source_id: str) -> Path:
+    """data/downloads/<fonte> — pasta segura para o usuário apagar."""
+    return DATA_DIR / DOWNLOADS_SUBDIR / (source_id or "unknown")
+
+
 def enqueue(item: dict[str, Any], content: bytes) -> dict[str, Any]:
     """Persist a downloaded document and metadata to the pending queue.
 
@@ -50,12 +83,13 @@ def enqueue(item: dict[str, Any], content: bytes) -> dict[str, Any]:
     """
     _ensure_dirs()
     sha = hashlib.sha256(content).hexdigest()
-    out_dir = DATA_DIR / item.get("source_id", "unknown")
+    out_dir = download_dir(item.get("source_id", ""))
     out_dir.mkdir(parents=True, exist_ok=True)
 
     url = item.get("url", "")
     ext = ".pdf" if url.lower().endswith(".pdf") else ".html"
-    filename = f"{sha[:16]}{ext}"
+    stem = sanitize_filename(item.get("title", ""), url, ext)[: -len(ext)]
+    filename = f"{stem} [{sha[:8]}]{ext}"
     (out_dir / filename).write_bytes(content)
 
     queue_path = DATA_DIR / "queue.jsonl"

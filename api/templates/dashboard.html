@@ -329,7 +329,7 @@
               <button class="btn btn-outline-danger" onclick="batchValidate('reprovado')" title="Reprovar selecionados">
                 <i class="bi bi-x-lg"></i>
               </button>
-              <a class="btn btn-outline-secondary" href="/regs/export/csv" title="Exportar CSV">
+              <a class="btn btn-outline-secondary" href="/regs/export/csv" title="Exportar CSV (respeita os filtros de Validação e Fonte)" onclick="exportCsv(event)">
                 <i class="bi bi-download"></i>
               </a>
             </div>
@@ -567,6 +567,25 @@
           </div>
         </div>
       </div>
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+              <h6><i class="bi bi-folder2-open me-2"></i>Downloads</h6>
+              <p class="text-muted small mb-0">
+                Os PDFs/HTML baixados ficam em <code>data/downloads/&lt;fonte&gt;/</code>
+                com o nome do documento — você pode apagar quando quiser.
+              </p>
+            </div>
+            <div class="text-end">
+              <div class="small text-muted mb-2" id="dlInfo">—</div>
+              <button class="btn btn-outline-danger btn-sm" id="btnClearDl" onclick="clearDownloads()">
+                <i class="bi bi-trash3"></i> Limpar downloads
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -680,7 +699,7 @@ function showSection(name) {
   if (name === 'documents') loadDocs(1);
   if (name === 'queue') loadQueue();
   if (name === 'providers') loadProviders();
-  if (name === 'settings') loadSettings();
+  if (name === 'settings') { loadSettings(); loadDownloads(); }
   if (name === 'pipeline') refreshPipelineStatus();
   toggleSidebar();
 }
@@ -897,6 +916,16 @@ function validateOne(id, action) {
 function toggleSelectAll() {
   const checked = document.getElementById('selectAll').checked;
   document.querySelectorAll('.doc-check').forEach(c => c.checked = checked);
+}
+
+function exportCsv(e) {
+  e.preventDefault();
+  const p = new URLSearchParams();
+  const v = document.getElementById('filterValidacao').value;
+  const f = document.getElementById('filterFonte').value;
+  if (v) p.set('validacao', v);
+  if (f) p.set('fonte', f);
+  window.location.href = '/regs/export/csv' + (p.toString() ? '?' + p.toString() : '');
 }
 
 function batchValidate(action) {
@@ -1172,6 +1201,42 @@ function saveSettings(e) {
       toast(d.error || 'Erro ao salvar', 'danger');
     }
   });
+}
+
+// ── Downloads ───────────────────────────────────────────────────
+function fmtBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function loadDownloads() {
+  fetch('/pipeline/downloads').then(r => r.json()).then(d => {
+    const el = document.getElementById('dlInfo');
+    el.textContent = d.arquivos
+      ? `${d.arquivos} arquivo(s) — ${fmtBytes(d.bytes)}`
+      : 'pasta vazia';
+    document.getElementById('btnClearDl').disabled = !d.arquivos;
+  }).catch(() => {});
+}
+
+function clearDownloads() {
+  const info = document.getElementById('dlInfo').textContent;
+  if (!confirm(`Apagar TODOS os documentos baixados?\n\n${info}\n\nA análise já persistida no banco não é afetada.`)) return;
+  const btn = document.getElementById('btnClearDl');
+  btn.disabled = true;
+  fetch('/pipeline/clear-downloads', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        toast(`Downloads limpos: ${d.arquivos} arquivo(s), ${fmtBytes(d.bytes)} liberados`);
+        loadDownloads();
+      } else {
+        toast(d.error || 'Não foi possível limpar', 'warning');
+        loadDownloads();
+      }
+    })
+    .catch(() => { toast('Erro ao limpar downloads', 'danger'); loadDownloads(); });
 }
 
 // ── Health ─────────────────────────────────────────────────────

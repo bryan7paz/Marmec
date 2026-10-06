@@ -38,7 +38,7 @@ HtmlListSpider (página genérica)          ImodocsAdapter (docs.imo.org, login)
     ├─ filtro de período ANTES do download     │
     │   (sem data → mantido)                   │
     ▼                                          ▼
-Download → SHA-256 Dedup → queue.jsonl
+Download → data/downloads/<fonte>/<Título legível> → SHA-256 Dedup → queue.jsonl
 ```
 
 ### 2. Processor Phase
@@ -94,7 +94,8 @@ Módulo de crawling com arquitetura extensível.
 | Arquivo | Responsabilidade |
 |---------|------------------|
 | `runner.py` | Orquestrador crawl → download → enqueue |
-| `storage.py` | Estado persistente + fila JSONL |
+| `storage.py` | Downloads com nome legível + fila JSONL |
+| `migrate.py` | Migra downloads antigos para `data/downloads/` |
 | `downloader.py` | Download com retry (httpx/Playwright) |
 | `spiders/base.py` | Interface abstrata BaseSpider |
 | `spiders/registry.py` | Registry pattern para spiders |

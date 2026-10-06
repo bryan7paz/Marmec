@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import threading
 import time
 from collections.abc import AsyncGenerator
@@ -373,3 +374,55 @@ def clear_notifications():
 
     count = clear_notifications()
     return {"ok": True, "cleared": count}
+
+
+# ── Downloads ────────────────────────────────────────────────────
+
+
+def _downloads_stats() -> tuple[int, int]:
+    """(arquivos, bytes) em data/downloads/."""
+    from crawler import storage
+
+    root = storage.DATA_DIR / storage.DOWNLOADS_SUBDIR
+    files = total = 0
+    if root.is_dir():
+        for f in root.rglob("*"):
+            if f.is_file():
+                files += 1
+                total += f.stat().st_size
+    return files, total
+
+
+@router.get("/downloads")
+def downloads_info():
+    """Tamanho da pasta de downloads (alimenta o botão de limpar)."""
+    files, total = _downloads_stats()
+    return {"arquivos": files, "bytes": total}
+
+
+@router.post("/clear-downloads")
+def clear_downloads():
+    """Apaga todos os documentos baixados (data/downloads/)."""
+    from crawler import storage
+
+    queue_path = storage.DATA_DIR / "queue.jsonl"
+    pending = 0
+    if queue_path.exists():
+        pending = sum(
+            1 for line in queue_path.read_text(encoding="utf-8").splitlines() if line.strip()
+        )
+    if pending:
+        return {
+            "ok": False,
+            "error": (
+                f"{pending} documento(s) aguardando processamento — "
+                "processe a fila antes de limpar os downloads"
+            ),
+        }
+
+    files, total = _downloads_stats()
+    root = storage.DATA_DIR / storage.DOWNLOADS_SUBDIR
+    if root.is_dir():
+        shutil.rmtree(root, ignore_errors=True)
+    logger.info("Downloads limpos: %d arquivos, %d bytes liberados", files, total)
+    return {"ok": True, "arquivos": files, "bytes": total}
