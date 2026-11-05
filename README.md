@@ -168,33 +168,27 @@ DATABASE_URL=postgresql+psycopg2://regulatory:sua_senha@localhost:5432/regulator
 
 ### Provedores LLM
 
-O sistema usa **Google Gemini** e **NVIDIA NIM** (ambos gratuitos). Configure **pelo menos um** para usar o pipeline.
+O sistema suporta **múltiplos provedores de IA** com fallback automático. Configure **pelo menos um** para usar o pipeline. Se nenhum estiver disponível, o sistema avisa em vez de travar.
 
-#### Google Gemini (recomendado)
+#### Provedores gratuitos
 
-1. Acesse https://aistudio.google.com
-2. Vá em **Get API Key**
-3. Copie a chave
-4. Em `config/secrets.env`:
+| Provedor | Onde conseguir a chave | Custo | Observação |
+|----------|----------------------|-------|------------|
+| **Google Gemini** | https://aistudio.google.com → **Get API Key** | Grátis (nível gratuito) | Modelo recomendado: `gemini-3.8-flash` |
+| **NVIDIA NIM** | https://build.nvidia.com → **API → Generate API Key** | Grátis (nível gratuito) | Chave começa com `nvapi-` |
+| **Qualquer OpenAI-compatible** | Sua própria API (OpenAI, Groq, Together, etc.) | Varia | Use o campo **Endpoint** para qualquer URL compatível com OpenAI |
+
+#### Configurar chaves
+
+Em `config/secrets.env`:
 
 ```env
 GOOGLE_API_KEY=sua_chave_aqui
-```
-
-5. No dashboard, vá em **Configurações** e cole a chave
-6. Vá em **Provedores IA** e clique em **Ativar** no Gemini
-
-#### NVIDIA NIM (gratuito)
-
-1. Acesse https://build.nvidia.com
-2. Crie uma conta
-3. Vá em **API** → **Generate API Key**
-4. Copie a chave (começa com `nvapi-`)
-5. Em `config/secrets.env`:
-
-```env
 NVIDIA_API_KEY=nvapi-sua_chave_aqui
+OPENAI_API_KEY=sua_chave_aqui
 ```
+
+Ou pelo dashboard: **Configurações** → cole a chave → **Salvar Chaves**.
 
 #### Configurar provedor ativo
 
@@ -202,12 +196,34 @@ Em `config/llm.yaml`:
 
 ```yaml
 active: gemini                  # Provedor ativo
-fallback_chain:                 # Ordem de fallback
+fallback_chain:                 # Ordem de fallback (tenta o próximo se o primeiro falhar)
   - gemini
   - nvidia
+providers:
+  gemini:
+    enabled: true
+    model: gemini-3.8-flash
+  nvidia:
+    enabled: true
+    model: nvidia/nemotron-3-super-120b-a12b
+  openai_compat:
+    enabled: false              # Ative se quiser usar outro endpoint OpenAI-compatible
+    model: gpt-3.5-turbo
+    endpoint: https://api.openai.com/v1   # Endpoint dinâmico (opção 2)
+    env_key: OPENAI_API_KEY
 ```
 
-Ou pelo dashboard: **Provedores IA** → clique em **Ativar** no provedor desejado.
+Ou pelo dashboard: **Provedores IA** → clique em **Ativar** no provedor desejado. Você também pode editar **Endpoint**, **Modelo** e **Habilitado** diretamente na tela de ativação.
+
+#### Health check dos provedores
+
+- `GET /pipeline/providers/health`: retorna se pelo menos um provedor está disponível
+- `POST /pipeline/providers/{id}/test`: testa a conexão com um provedor específico
+- Antes de iniciar qualquer análise (`/pipeline/run` ou `/pipeline/process`), o sistema verifica se há ao menos um provedor disponível. Se não houver, retorna erro claro em vez de travar.
+
+#### O que acontece se nenhum provedor estiver disponível?
+
+O sistema **não trava**. O `/pipeline/run` e `/pipeline/process` retornam erro informando que nenhum provedor LLM está configurado. Os documentos já baixados permanecem na fila e podem ser processados depois, assim que você configurar um provedor funcional.
 
 ---
 
@@ -382,7 +398,9 @@ python process_queue.py
 | `GET` | `/pipeline/status` | Estado do pipeline |
 | `GET` | `/pipeline/stream` | SSE com progresso em tempo real |
 | `GET` | `/pipeline/providers` | Listar provedores LLM |
-| `POST` | `/pipeline/providers/{id}/activate` | Ativar provedor |
+| `POST` | `/pipeline/providers/{id}/activate` | Ativar provedor (aceita endpoint/model/enabled) |
+| `POST` | `/pipeline/providers/{id}/test` | Testar conexão com um provedor |
+| `GET` | `/pipeline/providers/health` | Verificar se há pelo menos um provedor disponível |
 | `GET` | `/pipeline/settings` | Configurações atuais |
 | `POST` | `/pipeline/settings` | Salvar configurações |
 | `GET` | `/pipeline/notifications` | Histórico de notificações |
@@ -480,6 +498,24 @@ curl http://127.0.0.1:8000/pipeline/providers
 
 ```bash
 curl -X POST http://127.0.0.1:8000/pipeline/providers/gemini/activate
+```
+
+#### Ativar um provedor com endpoint customizado (OpenAI-compatible)
+
+```bash
+curl -X POST "http://127.0.0.1:8000/pipeline/providers/openai_compat/activate?endpoint=https://api.openai.com/v1&model=gpt-3.5-turbo&enabled=true"
+```
+
+#### Testar conexão com um provedor
+
+```bash
+curl -X POST http://127.0.0.1:8000/pipeline/providers/gemini/test
+```
+
+#### Verificar se há pelo menos um provedor disponível (health check)
+
+```bash
+curl http://127.0.0.1:8000/pipeline/providers/health
 ```
 
 ### Exemplos com Python
