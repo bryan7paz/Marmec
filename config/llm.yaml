@@ -8,3 +8,8 @@ providers:
   nvidia:
     enabled: false
     model: nvidia/nemotron-3-super-120b-a12b
+  openai_compat:
+    enabled: false
+    model: gpt-3.5-turbo
+    base_url: https://api.openai.com/v1
+    env_key: OPENAI_API_KEY

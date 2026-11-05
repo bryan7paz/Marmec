@@ -176,9 +176,71 @@ def run_pipeline(body: AnalyzeRequest):
     if pipeline_state.running:
         return {"ok": False, "error": "Pipeline já está em execução"}
 
+    # Opção 3: verificar se há pelo menos um provedor disponível antes de iniciar
+    import os
+
+    from core.llm_providers import PROVIDERS, _load_config
+
+    cfg = _load_config()
+    providers_cfg = cfg.get("providers", {})
+    any_available = False
+    for pid, pinfo in PROVIDERS.items():
+        pcfg = providers_cfg.get(pid, {})
+        if not pcfg.get("enabled", True):
+            continue
+        model = pcfg.get("model", "")
+        api_key = pcfg.get("api_key", "") or os.environ.get(pinfo["env_key"], "")
+        if api_key and model:
+            any_available = True
+            break
+
+    if not any_available:
+        return {
+            "ok": False,
+            "error": "Nenhum provedor LLM disponível. Configure pelo menos um provedor com chave e modelo em Configurações > Provedores IA.",
+        }
+
     thread = threading.Thread(target=_analyze_background, args=(body,), daemon=True)
     thread.start()
     return {"ok": True, "message": "Análise iniciada"}
+
+
+@router.get("/providers/health")
+def providers_health():
+    """Health check: retorna se pelo menos um provedor LLM está disponível (opção 3)."""
+    import os
+
+    from core.llm_providers import PROVIDERS, _load_config
+
+    cfg = _load_config()
+    providers_cfg = cfg.get("providers", {})
+    active = cfg.get("active", "gemini")
+
+    result = {"any_available": False, "providers": []}
+    for pid, pinfo in PROVIDERS.items():
+        pcfg = providers_cfg.get(pid, {})
+        enabled = pcfg.get("enabled", True)
+        model = pcfg.get("model", "")
+        api_key = pcfg.get("api_key", "") or os.environ.get(pinfo["env_key"], "")
+        endpoint = pcfg.get("endpoint") or pinfo.get("base_url", "")
+
+        available = bool(enabled and api_key and model)
+        if available:
+            result["any_available"] = True
+
+        result["providers"].append(
+            {
+                "id": pid,
+                "name": pinfo["name"],
+                "enabled": enabled,
+                "active": pid == active,
+                "configured": bool(api_key),
+                "model": model,
+                "endpoint": endpoint,
+                "available": available,
+            }
+        )
+    return result
 
 
 @router.post("/process")
@@ -186,6 +248,30 @@ def process_only():
     """Trigger queue processing only (no crawl) in the background."""
     if pipeline_state.running:
         return {"ok": False, "error": "Pipeline já está em execução"}
+
+    # Opção 3: verificar se há pelo menos um provedor disponível antes de iniciar
+    import os
+
+    from core.llm_providers import PROVIDERS, _load_config
+
+    cfg = _load_config()
+    providers_cfg = cfg.get("providers", {})
+    any_available = False
+    for pid, pinfo in PROVIDERS.items():
+        pcfg = providers_cfg.get(pid, {})
+        if not pcfg.get("enabled", True):
+            continue
+        model = pcfg.get("model", "")
+        api_key = pcfg.get("api_key", "") or os.environ.get(pinfo["env_key"], "")
+        if api_key and model:
+            any_available = True
+            break
+
+    if not any_available:
+        return {
+            "ok": False,
+            "error": "Nenhum provedor LLM disponível. Configure pelo menos um provedor com chave e modelo em Configurações > Provedores IA.",
+        }
 
     thread = threading.Thread(target=_process_only_background, daemon=True)
     thread.start()
@@ -249,15 +335,61 @@ async def pipeline_stream():
 
 @router.get("/providers")
 def list_providers():
-    """List available LLM providers and their status."""
+    """List available LLM providers and their status (opção 3 - health check)."""
     from core.llm_providers import list_providers as _list
 
     return _list()
 
 
+@router.post("/providers/{provider_id}/test")
+def test_provider(provider_id: str):
+    """Test connection to a specific LLM provider (opção 3 - health check)."""
+    from core.llm_providers import PROVIDERS, _load_config, generate_structured
+
+    if provider_id not in PROVIDERS:
+        return {"ok": False, "error": f"Provedor '{provider_id}' não existe"}
+
+    cfg = _load_config()
+    providers_cfg = cfg.get("providers", {})
+    p_cfg = providers_cfg.get(provider_id, {})
+    pinfo = PROVIDERS[provider_id]
+
+    model = p_cfg.get("model", "")
+    api_key = p_cfg.get("api_key", "")
+    # also check env var
+    import os
+
+    if not api_key:
+        api_key = os.environ.get(pinfo["env_key"], "")
+    base_url = p_cfg.get("endpoint") or p_cfg.get("base_url") or pinfo.get("base_url", "")
+
+    if not api_key:
+        return {"ok": False, "error": f"API key não configurada para {provider_id}"}
+    if not model:
+        return {"ok": False, "error": f"Modelo não configurado para {provider_id}"}
+
+    try:
+        generate_structured(
+            system_prompt='Responda apenas com JSON válido: {"ok": true}',
+            user_prompt="teste de conexão",
+        )
+        return {"ok": True, "provider": provider_id, "model": model, "endpoint": base_url}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)[:200], "provider": provider_id, "model": model}
+
+
 @router.post("/providers/{provider_id}/activate")
-def activate_provider(provider_id: str):
-    """Set a provider as active in config/llm.yaml."""
+def activate_provider(
+    provider_id: str,
+    endpoint: str | None = None,
+    model: str | None = None,
+    enabled: bool | None = None,
+):
+    """Set a provider as active in config/llm.yaml.
+
+    Allows updating endpoint, model and enabled state for dynamic
+    OpenAI-compatible providers (opção 2).
+    """
     import yaml
     from core.llm_providers import CONFIG_PATH, PROVIDERS
 
@@ -269,11 +401,27 @@ def activate_provider(provider_id: str):
         with open(CONFIG_PATH, encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
 
+    providers_cfg = cfg.setdefault("providers", {})
+    p_cfg = providers_cfg.setdefault(provider_id, {})
+
+    if endpoint is not None:
+        p_cfg["endpoint"] = endpoint
+    if model is not None:
+        p_cfg["model"] = model
+    if enabled is not None:
+        p_cfg["enabled"] = enabled
+
     cfg["active"] = provider_id
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True)
 
-    return {"ok": True, "active": provider_id}
+    return {
+        "ok": True,
+        "active": provider_id,
+        "endpoint": p_cfg.get("endpoint"),
+        "model": p_cfg.get("model"),
+        "enabled": p_cfg.get("enabled"),
+    }
 
 
 # ── Settings (API keys) ─────────────────────────────────────────

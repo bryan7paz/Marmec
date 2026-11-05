@@ -51,7 +51,7 @@ def process_queue() -> int:
             # Erro transitório (LLM/cota/IO): mantém na fila para retry.
             # Se o erro indicar que NENHUM provedor LLM está disponível
             # (ex.: todos desabilitados ou fora do ar), descarta o item
-            # para não travar a fila para sempre.
+            # para não travar a fila para sempre (opção 4).
             msg = str(exc).lower()
             provedor_indisponível = (
                 "não foi possível importar google.genai" in msg
@@ -65,7 +65,8 @@ def process_queue() -> int:
             if provedor_indisponível:
                 logger.warning(
                     "Descartando %s (provedor LLM indisponível): %s",
-                    record.get("title"), exc,
+                    record.get("title"),
+                    exc,
                 )
                 processed_hashes.append(sha)
             else:

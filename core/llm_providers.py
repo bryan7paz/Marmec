@@ -52,7 +52,7 @@ def _call_gemini(system_prompt: str, user_prompt: str, model: str, api_key: str)
     import importlib
     import sys
 
-    Client = None
+    client_class = None
     types = None
 
     try:
@@ -61,21 +61,21 @@ def _call_gemini(system_prompt: str, user_prompt: str, model: str, api_key: str)
         importlib.import_module("google")
         if "google.genai" not in sys.modules:
             importlib.import_module("google.genai")
-        Client = sys.modules["google.genai"].Client
+        client_class = sys.modules["google.genai"].Client
         types = sys.modules["google.genai.types"]
     except Exception:
         # Fallback: import direto via importlib
         try:
             mod = importlib.import_module("google.genai")
-            Client = getattr(mod, "Client", None)
+            client_class = getattr(mod, "Client", None)
             types = importlib.import_module("google.genai.types")
         except Exception as exc:
-            raise ImportError(f"não foi possível importar google.genai: {exc}")
+            raise ImportError(f"não foi possível importar google.genai: {exc}") from exc
 
-    if Client is None or types is None:
+    if client_class is None or types is None:
         raise ImportError("google.genai.Client ou types não encontrados após import")
 
-    client = Client(api_key=api_key)
+    client = client_class(api_key=api_key)
     response = client.models.generate_content(
         model=model,
         contents=user_prompt,
@@ -131,6 +131,12 @@ PROVIDERS = {
         "call": _call_openai_compatible,
         "needs_base_url": True,
     },
+    "openai_compat": {
+        "name": "OpenAI Compatible",
+        "env_key": "OPENAI_API_KEY",
+        "call": _call_openai_compatible,
+        "needs_base_url": True,
+    },
 }
 
 
@@ -163,7 +169,7 @@ def generate_structured(system_prompt: str, user_prompt: str) -> dict[str, Any]:
 
         model = pcfg.get("model", "")
         api_key = _get_env(provider["env_key"], pcfg.get("api_key", ""))
-        base_url = pcfg.get("base_url", provider.get("base_url", ""))
+        base_url = pcfg.get("endpoint") or pcfg.get("base_url") or provider.get("base_url", "")
 
         if not api_key:
             logger.debug("Provedor %s sem API key, pulando", provider_id)
@@ -223,6 +229,7 @@ def list_providers() -> list[dict[str, Any]]:
                 "active": pid == active,
                 "configured": bool(api_key),
                 "model": pcfg.get("model", ""),
+                "endpoint": pcfg.get("endpoint", pinfo.get("base_url", "")),
             }
         )
     return result
