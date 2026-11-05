@@ -42,11 +42,40 @@ def _get_env(key: str, fallback: str = "") -> str:
 
 
 def _call_gemini(system_prompt: str, user_prompt: str, model: str, api_key: str) -> dict[str, Any]:
-    """Google Gemini via google.genai (substitui google-generativeai descontinuado)."""
-    from google import genai
-    from google.genai import types
+    """Google Gemini via google-genai (substitui google-generativeai descontinuado).
 
-    client = genai.Client(api_key=api_key)
+    Força o import do submódulo google.genai para contornar conflito de
+    namespace entre "google" (google-auth/api-core) e "google.genai"
+    (google-genai). Quando google.auth é importado primeiro, ele registra
+    "google" como namespace parcial e esconde o submódulo genai.
+    """
+    import importlib
+    import sys
+
+    Client = None
+    types = None
+
+    try:
+        # Garante que o pacote pai "google" esteja totalmente carregado
+        # para que submódulos instalados depois (google.genai) sejam visíveis
+        importlib.import_module("google")
+        if "google.genai" not in sys.modules:
+            importlib.import_module("google.genai")
+        Client = sys.modules["google.genai"].Client
+        types = sys.modules["google.genai.types"]
+    except Exception:
+        # Fallback: import direto via importlib
+        try:
+            mod = importlib.import_module("google.genai")
+            Client = getattr(mod, "Client", None)
+            types = importlib.import_module("google.genai.types")
+        except Exception as exc:
+            raise ImportError(f"não foi possível importar google.genai: {exc}")
+
+    if Client is None or types is None:
+        raise ImportError("google.genai.Client ou types não encontrados após import")
+
+    client = Client(api_key=api_key)
     response = client.models.generate_content(
         model=model,
         contents=user_prompt,

@@ -1,11 +1,10 @@
-active: nvidia
+active: gemini
 fallback_chain:
 - gemini
-- nvidia
 providers:
   gemini:
-    enabled: true
-    model: gemini-2.5-flash
+    enabled: false
+    model: gemini-3.8-flash
   nvidia:
-    enabled: true
+    enabled: false
     model: nvidia/nemotron-3-super-120b-a12b

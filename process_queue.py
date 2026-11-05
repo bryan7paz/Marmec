@@ -48,8 +48,28 @@ def process_queue() -> int:
             processed_hashes.append(sha)
             continue
         except Exception as exc:
-            # Erro transitório (LLM/cota/IO): mantém na fila para retry
-            logger.warning("Erro processando %s: %s", record.get("title"), exc)
+            # Erro transitório (LLM/cota/IO): mantém na fila para retry.
+            # Se o erro indicar que NENHUM provedor LLM está disponível
+            # (ex.: todos desabilitados ou fora do ar), descarta o item
+            # para não travar a fila para sempre.
+            msg = str(exc).lower()
+            provedor_indisponível = (
+                "não foi possível importar google.genai" in msg
+                or "nenhum provedor llm disponível" in msg
+                or "all providers failed" in msg
+                or "503" in msg
+                or "404" in msg
+                or "unavailable" in msg
+                or "not found" in msg
+            )
+            if provedor_indisponível:
+                logger.warning(
+                    "Descartando %s (provedor LLM indisponível): %s",
+                    record.get("title"), exc,
+                )
+                processed_hashes.append(sha)
+            else:
+                logger.warning("Erro processando %s: %s", record.get("title"), exc)
             continue
 
         row = persistence.build_row(raw)
