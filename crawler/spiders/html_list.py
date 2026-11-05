@@ -19,18 +19,28 @@ class HtmlListSpider(BaseSpider):
     """Loads a page and extracts candidate document links (pdf/html)."""
 
     KEYWORDS = [
+        # EN
         "circular",
         "resolution",
         "marine notice",
+        "notice",
+        "amendment",
+        "update",
+        # PT-BR
         "norma",
+        "resolução",
+        "resolucao",
+        "circular",
+        "portaria",
+        "edital",
+        "comunicado",
+        "instrução normativa",
+        "instrucao normativa",
         "np",
         "dpc",
         "aplic",
         "alteracao",
         "mmc",
-        "notice",
-        "amendment",
-        "update",
     ]
 
     # Textos de navegação/chrome que nunca são documentos
@@ -61,7 +71,7 @@ class HtmlListSpider(BaseSpider):
         alias: i for i, aliases in enumerate(_MONTH_ALIASES, 1) for alias in aliases
     }
 
-    async def fetch_items(self) -> list[Item]:
+    async def fetch_items(self) -> tuple[list[Item], dict[str, int]]:
         from core.browser import get_browser
 
         async with get_browser() as page:
@@ -70,7 +80,7 @@ class HtmlListSpider(BaseSpider):
 
         return self._extract_links(html)
 
-    def _extract_links(self, html: str) -> list[Item]:
+    def _extract_links(self, html: str) -> tuple[list[Item], dict[str, int]]:
         from bs4 import BeautifulSoup
 
         soup = BeautifulSoup(html, "html.parser")
@@ -85,6 +95,12 @@ class HtmlListSpider(BaseSpider):
 
         items: list[Item] = []
         seen: set[str] = set()
+        stats = {
+            "total_links": 0,
+            "discarded_blacklist": 0,
+            "discarded_keywords": 0,
+            "kept": 0,
+        }
 
         for a in root.find_all("a", href=True):
             href = a["href"]
@@ -95,14 +111,20 @@ class HtmlListSpider(BaseSpider):
 
             if not text or full_url in seen:
                 continue
+            stats["total_links"] += 1
+            if any(b in f"{text} {full_url}".lower() for b in self.BLACKLIST):
+                stats["discarded_blacklist"] += 1
+                continue
             if filters and not any(f.lower() in f"{text} {full_url}".lower() for f in filters):
                 continue
             if compiled_pattern and not compiled_pattern.search(full_url):
                 continue
             if not self._is_candidate(text, full_url):
+                stats["discarded_keywords"] += 1
                 continue
 
             seen.add(full_url)
+            stats["kept"] += 1
             items.append(
                 Item(
                     title=text,
@@ -111,7 +133,7 @@ class HtmlListSpider(BaseSpider):
                     source_id=self.source_id,
                 )
             )
-        return items
+        return items, stats
 
     # ── Date extraction ─────────────────────────────────────────────
 

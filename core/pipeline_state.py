@@ -37,6 +37,7 @@ class PipelineState:
         self.queue_size = 0
         self.docs_persisted = 0
         self.started_at: datetime | None = None
+        self.crawl_stats: dict[str, int] | None = None
         self._listeners: list[threading.Event] = []
 
     # ── Mutation ────────────────────────────────────────────────────
@@ -105,6 +106,7 @@ class PipelineState:
                 "queue_size": self.queue_size,
                 "docs_persisted": self.docs_persisted,
                 "started_at": self.started_at.isoformat() if self.started_at else None,
+                "crawl_stats": self.crawl_stats,
             }
 
 

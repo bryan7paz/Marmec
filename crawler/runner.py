@@ -87,25 +87,39 @@ async def run_source(
     source: dict[str, Any],
     date_from: date | None = None,
     date_to: date | None = None,
-) -> list[dict[str, Any]]:
-    """Run a single source and return the newly enqueued records."""
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Run a single source and return (newly enqueued records, crawl stats).
+
+    Stats combine link-gate discards (blacklist/keywords) with period
+    discards and no-date counts so the UI can explain *why* 0 items
+    resulted instead of just showing "nothing".
+    """
     source_id = source.get("id", "")
     spider = get_spider(source)
 
-    items: list[Item] = await spider.fetch_items()
+    items, link_stats = await spider.fetch_items()
 
     # Período ANTES do download/LLM: descarta o que está fora, mantém
     # links sem data visível
-    items, stats = filter_by_period(items, date_from, date_to)
+    items, period_stats = filter_by_period(items, date_from, date_to)
     if date_from or date_to:
         logger.info(
             "Período %s..%s: %d link(s) no período, %d fora, %d sem data (mantidos)",
             date_from or "*",
             date_to or "*",
-            stats["kept"] - stats["no_date"],
-            stats["discarded"],
-            stats["no_date"],
+            period_stats["kept"] - period_stats["no_date"],
+            period_stats["discarded"],
+            period_stats["no_date"],
         )
+
+    stats = {
+        "total_links": link_stats["total_links"],
+        "discarded_blacklist": link_stats["discarded_blacklist"],
+        "discarded_keywords": link_stats["discarded_keywords"],
+        "discarded_period": period_stats["discarded"],
+        "kept": period_stats["kept"],
+        "no_date": period_stats["no_date"],
+    }
 
     seen = storage.load_seen(source_id)
     new_records: list[dict[str, Any]] = []
@@ -128,7 +142,7 @@ async def run_source(
             new_hashes.add(h)
 
     storage.save_seen(source_id, new_hashes)
-    return new_records
+    return new_records, stats
 
 
 async def _run_and_close(
@@ -146,8 +160,11 @@ def run(
     url: str,
     date_from: date | None = None,
     date_to: date | None = None,
-) -> list[dict[str, Any]]:
-    """Synchronous entry point: crawl one URL, optionally period-filtered."""
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Synchronous entry point: crawl one URL, optionally period-filtered.
+
+    Returns ``(records, stats)``.
+    """
     source = source_from_url(url)
     return asyncio.run(_run_and_close(source, date_from, date_to))
 

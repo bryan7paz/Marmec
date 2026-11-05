@@ -42,16 +42,20 @@ def _get_env(key: str, fallback: str = "") -> str:
 
 
 def _call_gemini(system_prompt: str, user_prompt: str, model: str, api_key: str) -> dict[str, Any]:
-    """Google Gemini via google-generativeai."""
-    import google.generativeai as genai
+    """Google Gemini via google.genai (substitui google-generativeai descontinuado)."""
+    from google import genai
+    from google.genai import types
 
-    genai.configure(api_key=api_key)
-    m = genai.GenerativeModel(
-        model,
-        generation_config={"response_mime_type": "application/json", "temperature": 0.0},
-        system_instruction=system_prompt,
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=model,
+        contents=user_prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            temperature=0.0,
+            response_mime_type="application/json",
+        ),
     )
-    response = m.generate_content(user_prompt)
     raw = (response.text or "{}").strip()
     raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     return json.loads(raw)

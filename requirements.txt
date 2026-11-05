@@ -5,7 +5,7 @@
 playwright==1.63.0              # navegadores (revisão 1243)
 pymupdf==1.28.2                # extração de texto em PDF
 beautifulsoup4==4.15.0         # parsing HTML/HTML
-google-generativeai==0.8.6     # Gemini (a api.generativeai.before)
+google-genai==1.11.0                 # Gemini (não descontinuado, substitui google-generativeai)
 openai==1.109.1                # provedor NVIDIA/OpenAI
 pydantic==2.13.5               # validação de dados
 pyyaml==6.0.3                  # config/YAML

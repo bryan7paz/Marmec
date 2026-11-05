@@ -62,6 +62,8 @@ def notify_pipeline_complete(
     new_documents: int,
     errors: list[str] | None = None,
     duration_seconds: float = 0,
+    crawl_stats: dict[str, int] | None = None,
+    reason: str | None = None,
 ) -> None:
     """Notify when pipeline finishes."""
     _log_event(
@@ -71,6 +73,8 @@ def notify_pipeline_complete(
             "new_documents": new_documents,
             "errors": errors or [],
             "duration_seconds": round(duration_seconds, 2),
+            "crawl_stats": crawl_stats,
+            "reason": reason,
         },
     )
 

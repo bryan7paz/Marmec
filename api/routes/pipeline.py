@@ -68,12 +68,13 @@ def _analyze_background(body: AnalyzeRequest) -> None:
             finally:
                 await close_pool()
 
-        records = _asyncio.run(_crawl())
+        records, stats = _asyncio.run(_crawl())
 
         pipeline_state.update(
             step="crawling_done",
             current=f"{len(records)} documento(s) baixado(s)",
             processed=len(records),
+            crawl_stats=stats,
         )
 
         # Notify new documents
@@ -88,7 +89,26 @@ def _analyze_background(body: AnalyzeRequest) -> None:
         if not records:
             pipeline_state.finish(ok=True)
             duration = time.time() - start_time
-            notify_pipeline_complete(processed=0, new_documents=0, duration_seconds=duration)
+            # Explicar por que 0 documentos: período, palavras-chave ou download
+            reason_parts = []
+            if stats.get("discarded_period"):
+                reason_parts.append(f"{stats['discarded_period']} fora do período")
+            if stats.get("discarded_keywords"):
+                reason_parts.append(
+                    f"{stats['discarded_keywords']} não passaram no filtro de assunto"
+                )
+            if stats.get("discarded_blacklist"):
+                reason_parts.append(f"{stats['discarded_blacklist']} links de navegação")
+            if stats.get("total_links", 0) == 0:
+                reason_parts.append("nenhum link encontrado na página")
+            reason = "; ".join(reason_parts) if reason_parts else "página sem links candidatos"
+            notify_pipeline_complete(
+                processed=0,
+                new_documents=0,
+                duration_seconds=duration,
+                crawl_stats=stats,
+                reason=reason,
+            )
             return
 
         # ── Process ────────────────────────────────────────────────
