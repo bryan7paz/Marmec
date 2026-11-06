@@ -21,7 +21,7 @@ router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
 
 class AnalyzeRequest(BaseModel):
-    """Body for POST /pipeline/run â€” analyze documents found at a URL."""
+    """Body for POST /pipeline/run — analyze documents found at a URL."""
 
     url: str
     date_from: str | None = None
@@ -32,14 +32,14 @@ def _validate(body: AnalyzeRequest) -> str | None:
     """Return an error message, or None when the request is valid."""
     parsed = urlparse(body.url.strip())
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        return "URL invÃ¡lida â€” cole um link comeÃ§ando com http:// ou https://"
+        return "URL inválida — cole um link começando com http:// ou https://"
     try:
         df = date.fromisoformat(body.date_from) if body.date_from else None
         dt = date.fromisoformat(body.date_to) if body.date_to else None
     except ValueError:
-        return "PerÃ­odo invÃ¡lido â€” use o formato AAAA-MM-DD"
+        return "Período inválido — use o formato AAAA-MM-DD"
     if df and dt and df > dt:
-        return "PerÃ­odo invÃ¡lido: data inicial Ã© posterior Ã  final"
+        return "Período inválido: data inicial é posterior à final"
     return None
 
 
@@ -89,19 +89,19 @@ def _analyze_background(body: AnalyzeRequest) -> None:
         if not records:
             pipeline_state.finish(ok=True)
             duration = time.time() - start_time
-            # Explicar por que 0 documentos: perÃ­odo, palavras-chave ou download
+            # Explicar por que 0 documentos: período, palavras-chave ou download
             reason_parts = []
             if stats.get("discarded_period"):
-                reason_parts.append(f"{stats['discarded_period']} fora do perÃ­odo")
+                reason_parts.append(f"{stats['discarded_period']} fora do período")
             if stats.get("discarded_keywords"):
                 reason_parts.append(
-                    f"{stats['discarded_keywords']} nÃ£o passaram no filtro de assunto"
+                    f"{stats['discarded_keywords']} não passaram no filtro de assunto"
                 )
             if stats.get("discarded_blacklist"):
-                reason_parts.append(f"{stats['discarded_blacklist']} links de navegaÃ§Ã£o")
+                reason_parts.append(f"{stats['discarded_blacklist']} links de navegação")
             if stats.get("total_links", 0) == 0:
-                reason_parts.append("nenhum link encontrado na pÃ¡gina")
-            reason = "; ".join(reason_parts) if reason_parts else "pÃ¡gina sem links candidatos"
+                reason_parts.append("nenhum link encontrado na página")
+            reason = "; ".join(reason_parts) if reason_parts else "página sem links candidatos"
             notify_pipeline_complete(
                 processed=0,
                 new_documents=0,
@@ -123,7 +123,7 @@ def _analyze_background(body: AnalyzeRequest) -> None:
         )
 
     except Exception as exc:
-        logger.error("AnÃ¡lise falhou: %s", exc)
+        logger.error("Análise falhou: %s", exc)
         pipeline_state.add_error(str(exc))
         pipeline_state.finish(ok=False)
         notify_pipeline_error(str(exc))
@@ -174,10 +174,9 @@ def run_pipeline(body: AnalyzeRequest):
         return {"ok": False, "error": error}
 
     if pipeline_state.running:
-        return {"ok": False, "error": "Pipeline jÃ¡ estÃ¡ em execuÃ§Ã£o"}
+        return {"ok": False, "error": "Pipeline já está em execução"}
 
-    # OpÃ§Ã£o 3: verificar se hÃ¡ pelo menos um provedor disponÃ­vel antes de iniciar
-
+    # Opção 3: verificar se há pelo menos um provedor disponível antes de iniciar
 
     from core.llm_providers import PROVIDERS, _get_env, _load_config
 
@@ -197,18 +196,17 @@ def run_pipeline(body: AnalyzeRequest):
     if not any_available:
         return {
             "ok": False,
-            "error": "Nenhum provedor LLM disponÃ­vel. Configure pelo menos um provedor com chave e modelo em ConfiguraÃ§Ãµes > Provedores IA.",
+            "error": "Nenhum provedor LLM disponível. Configure pelo menos um provedor com chave e modelo em Configurações > Provedores IA.",
         }
 
     thread = threading.Thread(target=_analyze_background, args=(body,), daemon=True)
     thread.start()
-    return {"ok": True, "message": "AnÃ¡lise iniciada"}
+    return {"ok": True, "message": "Análise iniciada"}
 
 
 @router.get("/providers/health")
 def providers_health():
-    """Health check: retorna se pelo menos um provedor LLM estÃ¡ disponÃ­vel (opÃ§Ã£o 3)."""
-
+    """Health check: retorna se pelo menos um provedor LLM está disponível (opção 3)."""
 
     from core.llm_providers import PROVIDERS, _get_env, _load_config
 
@@ -247,10 +245,9 @@ def providers_health():
 def process_only():
     """Trigger queue processing only (no crawl) in the background."""
     if pipeline_state.running:
-        return {"ok": False, "error": "Pipeline jÃ¡ estÃ¡ em execuÃ§Ã£o"}
+        return {"ok": False, "error": "Pipeline já está em execução"}
 
-    # OpÃ§Ã£o 3: verificar se hÃ¡ pelo menos um provedor disponÃ­vel antes de iniciar
-
+    # Opção 3: verificar se há pelo menos um provedor disponível antes de iniciar
 
     from core.llm_providers import PROVIDERS, _get_env, _load_config
 
@@ -270,7 +267,7 @@ def process_only():
     if not any_available:
         return {
             "ok": False,
-            "error": "Nenhum provedor LLM disponÃ­vel. Configure pelo menos um provedor com chave e modelo em ConfiguraÃ§Ãµes > Provedores IA.",
+            "error": "Nenhum provedor LLM disponível. Configure pelo menos um provedor com chave e modelo em Configurações > Provedores IA.",
         }
 
     thread = threading.Thread(target=_process_only_background, daemon=True)
@@ -335,7 +332,7 @@ async def pipeline_stream():
 
 @router.get("/providers")
 def list_providers():
-    """List available LLM providers and their status (opÃ§Ã£o 3 - health check)."""
+    """List available LLM providers and their status (opção 3 - health check)."""
     from core.llm_providers import list_providers as _list
 
     return _list()
@@ -343,11 +340,11 @@ def list_providers():
 
 @router.post("/providers/{provider_id}/test")
 def test_provider(provider_id: str):
-    """Test connection to a specific LLM provider (opÃ§Ã£o 3 - health check)."""
+    """Test connection to a specific LLM provider (opção 3 - health check)."""
     from core.llm_providers import PROVIDERS, _load_config, generate_structured
 
     if provider_id not in PROVIDERS:
-        return {"ok": False, "error": f"Provedor '{provider_id}' nÃ£o existe"}
+        return {"ok": False, "error": f"Provedor '{provider_id}' não existe"}
 
     cfg = _load_config()
     providers_cfg = cfg.get("providers", {})
@@ -362,14 +359,14 @@ def test_provider(provider_id: str):
     base_url = p_cfg.get("endpoint") or p_cfg.get("base_url") or pinfo.get("base_url", "")
 
     if not api_key:
-        return {"ok": False, "error": f"API key nÃ£o configurada para {provider_id}"}
+        return {"ok": False, "error": f"API key não configurada para {provider_id}"}
     if not model:
-        return {"ok": False, "error": f"Modelo nÃ£o configurado para {provider_id}"}
+        return {"ok": False, "error": f"Modelo não configurado para {provider_id}"}
 
     try:
         generate_structured(
-            system_prompt='Responda apenas com JSON vÃ¡lido: {"ok": true}',
-            user_prompt="teste de conexÃ£o",
+            system_prompt='Responda apenas com JSON válido: {"ok": true}',
+            user_prompt="teste de conexão",
         )
         return {"ok": True, "provider": provider_id, "model": model, "endpoint": base_url}
     except Exception as exc:
@@ -386,13 +383,13 @@ def activate_provider(
     """Set a provider as active in config/llm.yaml.
 
     Allows updating endpoint, model and enabled state for dynamic
-    OpenAI-compatible providers (opÃ§Ã£o 2).
+    OpenAI-compatible providers (opção 2).
     """
     import yaml
     from core.llm_providers import CONFIG_PATH, PROVIDERS
 
     if provider_id not in PROVIDERS:
-        return {"ok": False, "error": f"Provedor '{provider_id}' nÃ£o existe"}
+        return {"ok": False, "error": f"Provedor '{provider_id}' não existe"}
 
     cfg = {}
     if CONFIG_PATH.exists():
@@ -561,7 +558,7 @@ def _downloads_stats() -> tuple[int, int]:
 
 @router.get("/downloads")
 def downloads_info():
-    """Tamanho da pasta de downloads (alimenta o botÃ£o de limpar)."""
+    """Tamanho da pasta de downloads (alimenta o botão de limpar)."""
     files, total = _downloads_stats()
     return {"arquivos": files, "bytes": total}
 
@@ -581,7 +578,7 @@ def clear_downloads():
         return {
             "ok": False,
             "error": (
-                f"{pending} documento(s) aguardando processamento â€” "
+                f"{pending} documento(s) aguardando processamento — "
                 "processe a fila antes de limpar os downloads"
             ),
         }
