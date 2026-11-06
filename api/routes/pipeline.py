@@ -112,7 +112,7 @@ def _analyze_background(body: AnalyzeRequest) -> None:
             return
 
         # â”€â”€ Process â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        _process_only()
+        _process_only(df, dt)
 
         duration = time.time() - start_time
         state = pipeline_state.snapshot()
@@ -151,12 +151,19 @@ def _process_only_background() -> None:
         notify_pipeline_error(str(exc))
 
 
-def _process_only() -> None:
-    """Shared processing logic (called by both full pipeline and process-only)."""
+def _process_only(date_from: date | None = None, date_to: date | None = None) -> None:
+    """Shared processing logic (called by both full pipeline and process-only).
+
+    When a period is given, records dated outside it (per the AI-extracted
+    publication date) are discarded instead of persisted.
+    """
     from process_queue import process_queue
 
     pipeline_state.update(step="processing", current="Processando fila com Gemini...")
-    saved = process_queue()
+    saved = process_queue(
+        date_from.isoformat() if date_from else None,
+        date_to.isoformat() if date_to else None,
+    )
 
     pipeline_state.update(
         step="done",

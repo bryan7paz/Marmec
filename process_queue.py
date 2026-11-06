@@ -9,6 +9,7 @@ Can be run standalone or imported as a module.
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 from api import models, persistence
@@ -20,8 +21,28 @@ from sqlalchemy import select
 QUEUE_PATH = Path(__file__).resolve().parent / "data" / "queue.jsonl"
 
 
-def process_queue() -> int:
-    """Process the queue and return the number of records persisted."""
+def _to_iso(value: str | None) -> date | None:
+    """Parse ``AAAA-MM-DD``, returning None on empty/invalid input."""
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return None
+
+
+def process_queue(
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> int:
+    """Process the queue and return the number of records persisted.
+
+    When a period (``date_from``/``date_to``, AAAA-MM-DD) is given,
+    records whose publication date extracted by the AI falls outside the
+    period are discarded instead of persisted.
+    """
+    df = _to_iso(date_from)
+    dt = _to_iso(date_to)
     Base.metadata.create_all(bind=engine)
 
     records = pipeline.read_queue()
@@ -35,6 +56,7 @@ def process_queue() -> int:
 
     processed = 0
     processed_hashes: list[str] = []
+    filtered_out = 0
 
     for record in records:
         sha = record.get("sha256", "")
@@ -74,6 +96,20 @@ def process_queue() -> int:
             continue
 
         row = persistence.build_row(raw)
+        # Filtro de período pós-IA: a data extraída pelo LLM agora é
+        # conhecida — descarta o que está fora do período solicitado.
+        pub = raw.get("data_publicacao")
+        if (df or dt) and pub:
+            try:
+                pd_ = date.fromisoformat(str(pub)[:10])
+                out_of_range = (df and pd_ < df) or (dt and pd_ > dt)
+            except ValueError:
+                out_of_range = False
+            if out_of_range:
+                logger.info("Descartando %s: fora do período (%s)", record.get("title"), pub)
+                processed_hashes.append(sha)
+                filtered_out += 1
+                continue
         db = SessionLocal()
         try:
             db.add(row)
@@ -93,7 +129,12 @@ def process_queue() -> int:
     if QUEUE_PATH.exists() and processed_hashes:
         _compact_queue(processed_hashes)
 
-    logger.info("Processados: %d (fila total: %d)", processed, len(records))
+    logger.info(
+        "Processados: %d (fila total: %d, fora do período: %d)",
+        processed,
+        len(records),
+        filtered_out,
+    )
     return processed
 
 
