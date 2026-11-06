@@ -16,7 +16,7 @@ from fastapi.templating import Jinja2Templates
 
 from .database import Base, engine
 from .middleware import api_key_auth, rate_limiter
-from .routes import dashboard, pipeline, regs
+from .routes import dashboard, pipeline, qa, regs
 from .telemetry import TelemetryMiddleware
 
 # ── env validation ──────────────────────────────────────────────────
@@ -90,6 +90,7 @@ app.add_middleware(
 app.include_router(regs.router, dependencies=[Depends(api_key_auth)])
 app.include_router(dashboard.router, dependencies=[Depends(api_key_auth)])
 app.include_router(pipeline.router, dependencies=[Depends(api_key_auth)])
+app.include_router(qa.router, dependencies=[Depends(api_key_auth)])
 
 # Apply rate limiter to all routes
 app.add_api_route(
