@@ -17,6 +17,7 @@ crawler/state/
 dist/
 *.log
 *.db
+*.docx
 
 # IDE / SO
 .vscode/
